@@ -18,10 +18,6 @@ export const manifest = setupManifest({
       arch: ['x86_64', 'aarch64', 'riscv64'],
     },
   },
-  alerts: {
-    install: i18n.alertInstall,
-    uninstall: i18n.alertUninstall,
-  },
   dependencies: {},
   plugins: ['url-v0'],
 })

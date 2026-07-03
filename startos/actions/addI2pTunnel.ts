@@ -7,7 +7,7 @@ import {
 } from '../fileModels/i2pd'
 import { sdk } from '../sdk'
 import { i18n } from '../i18n'
-import { parseI2pKey, reloadI2pdTunnels } from '../utils'
+import { bridgeHost, parseI2pKey, reloadI2pdTunnels } from '../utils'
 
 const { InputSpec, Value, Variants } = sdk
 
@@ -47,12 +47,7 @@ const inputSpec = InputSpec.of({
   }),
 }).add(({ Value }) => ({
   address: Value.dynamicUnion(async ({ prefill }) => {
-    const {
-      packageId: rawPkgId,
-      hostId,
-      internalPort,
-    } = prefill?.urlPluginMetadata ?? {}
-    const packageId = rawPkgId ?? 'STARTOS'
+    const { packageId, hostId, internalPort } = prefill?.urlPluginMetadata ?? {}
 
     const config = await i2pdConfig.read().once()
     const entries =
@@ -80,7 +75,7 @@ const inputSpec = InputSpec.of({
       let hostname = key
       try {
         const content = await sdk.volumes.i2pd.readFile(
-          `${tunnelDir(packageId, hostId!, key)}/hostname`,
+          `${tunnelDir(packageId!, hostId!, key)}/hostname`,
         )
         hostname = content.toString().trim()
       } catch (e: any) {
@@ -123,17 +118,16 @@ export const addI2pTunnel = sdk.Action.withInput(
     const p = prefill as typeof inputSpec._PARTIAL
     let noSsl = false
 
-    if (p?.urlPluginMetadata?.packageId && p.urlPluginMetadata.interfaceId) {
-      const iface = await sdk.serviceInterface
-        .get(effects, {
-          packageId: p?.urlPluginMetadata?.packageId,
-          id: p.urlPluginMetadata.interfaceId,
-        })
+    const meta = p?.urlPluginMetadata
+    if (meta?.packageId && meta.hostId && meta.internalPort != null) {
+      const internalPort = meta.internalPort
+      noSsl = await sdk.host
+        .get(
+          effects,
+          { hostId: meta.hostId, packageId: meta.packageId },
+          (host) => !host?.bindings[internalPort]?.options.addSsl,
+        )
         .once()
-      if (iface?.addressInfo?.internalPort) {
-        noSsl =
-          !iface?.host?.bindings[iface.addressInfo?.internalPort].options.addSsl
-      }
     }
 
     return inputSpec.filter(
@@ -150,14 +144,7 @@ export const addI2pTunnel = sdk.Action.withInput(
     if (!input.urlPluginMetadata) {
       throw new Error('This action must be invoked through the URL plugin')
     }
-    const {
-      packageId: rawPkgId,
-      hostId,
-      interfaceId,
-      internalPort,
-    } = input.urlPluginMetadata
-    // null packageId means the StartOS system UI interface (no backing package)
-    const packageId = rawPkgId ?? 'STARTOS'
+    const { packageId, hostId, internalPort } = input.urlPluginMetadata
     const address = input.address as {
       selection: string
       value: { privateKey?: string | null }
@@ -165,24 +152,13 @@ export const addI2pTunnel = sdk.Action.withInput(
 
     // I2P's own interfaces (SOCKS/HTTP proxies, console, transports) are not
     // tunnel targets — assigning an inbound .b32.i2p tunnel to them is nonsensical.
-    if (packageId === 'i2p') {
+    if (packageId === 'i2pd') {
       throw new Error(
         i18n('I2P proxy interfaces cannot receive I2P tunnel addresses'),
       )
     }
 
-    const defaultHost =
-      packageId === 'STARTOS' ? 'startos' : `${packageId}.startos`
-
-    // Look up the binding for this internalPort (STARTOS has no service interface)
-    const iface =
-      packageId !== 'STARTOS'
-        ? await sdk.serviceInterface
-            .get(effects, { packageId, id: interfaceId })
-            .once()
-        : null
-
-    const host = iface?.host
+    const host = await sdk.host.get(effects, { hostId, packageId }).once()
     const binding = host?.bindings[internalPort]
 
     // Build port entry: either SSL or non-SSL based on toggle
@@ -191,34 +167,17 @@ export const addI2pTunnel = sdk.Action.withInput(
       { target: string; ssl: boolean; internalPort: number }
     > = {}
 
-    if (input.ssl && packageId === 'STARTOS') {
-      newPorts['443'] = {
-        target: `${defaultHost}:443`,
-        ssl: true,
-        internalPort: 80,
-      }
-    } else if (input.ssl && binding?.options.addSsl) {
-      const sslAddr = binding.addresses.available.find(
-        (a) =>
-          a.ssl &&
-          a.metadata.kind === 'ipv4' &&
-          a.metadata.gateway === 'lxcbr0',
-      )
-      if (sslAddr && sslAddr.port !== null) {
+    if (input.ssl && binding?.options.addSsl) {
+      const addr = bridgeHost(host, internalPort, true)
+      if (addr) {
         newPorts[String(binding.options.addSsl.preferredExternalPort)] = {
-          target: `${sslAddr.hostname}:${sslAddr.port}`,
+          target: `${addr.hostname}:${addr.port}`,
           ssl: true,
           internalPort,
         }
       }
     } else {
-      if (packageId === 'STARTOS') {
-        newPorts['80'] = {
-          target: `${defaultHost}:80`,
-          ssl: false,
-          internalPort: 80,
-        }
-      } else if (binding?.enabled) {
+      if (binding?.enabled) {
         // A binding that terminates its own TLS (native `secure.ssl`) has no
         // plaintext endpoint, so a non-SSL tunnel can't honestly serve it.
         if (binding.options.secure?.ssl === true) {
@@ -226,10 +185,13 @@ export const addI2pTunnel = sdk.Action.withInput(
             `Cannot create a non-SSL I2P tunnel for "${packageId}": its interface is SSL-only. Create an SSL I2P tunnel instead.`,
           )
         }
-        newPorts[String(binding.options.preferredExternalPort)] = {
-          target: `${defaultHost}:${internalPort}`,
-          ssl: false,
-          internalPort,
+        const addr = bridgeHost(host, internalPort, false)
+        if (addr) {
+          newPorts[String(binding.options.preferredExternalPort)] = {
+            target: `${addr.hostname}:${addr.port}`,
+            ssl: false,
+            internalPort,
+          }
         }
       } else {
         throw new Error(

@@ -3,6 +3,11 @@
 ## Getting Started
 I2P starts immediately upon launch. The first 3 to 10 minutes are spent finding peers and integrating into the network. The status card will show a "loading" message during this initialization period, which is completely normal.
 
+## Requirements & upgrade notes
+
+- **StartOS 0.4.0-beta.10 or later is required.** I2P tunnels now reach their target apps over StartOS's internal LXC bridge instead of deprecated container hostnames, and the StartOS admin UI is addressed like any other service.
+- **Uninstalling I2P permanently deletes all I2P tunnel keys and `.b32.i2p` addresses.** Any service reachable through one of those addresses will lose it. Make a backup first if you want to keep your addresses.
+
 ## Browsing I2P Sites
 To browse the invisible web, configure your web browser's proxy settings to use this server's IP address with the following ports:
 - **HTTP proxy:** port 4444

@@ -14,7 +14,7 @@ const { InputSpec, Value } = sdk
 const inputSpec = InputSpec.of({
   urlPluginMetadata: Value.hidden<{
     interfaceId: string
-    packageId: string | null
+    packageId: string
     hostId: string
     internalPort: number
     ssl: boolean
@@ -42,15 +42,7 @@ export const deleteI2pTunnel = sdk.Action.withInput(
   async () => null,
 
   async ({ effects, input }) => {
-    const {
-      packageId: rawPkgId,
-      hostId,
-      hostname,
-      port,
-      ssl,
-    } = input.urlPluginMetadata
-    // null packageId means the StartOS system UI interface (no backing package)
-    const packageId = rawPkgId ?? 'STARTOS'
+    const { packageId, hostId, hostname, port, ssl } = input.urlPluginMetadata
 
     const config = await i2pdConfig.read().once()
     const i2pServices = structuredClone(config?.i2pServices || {})
