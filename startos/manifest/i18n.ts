@@ -1,28 +1,4 @@
 export default {
-  alertInstall: {
-    en_US:
-      'I2P takes 3–10 minutes to integrate into the network after first start. The service will show as loading during this time, this is normal.',
-    es_ES:
-      'I2P tarda entre 3 y 10 minutos en integrarse a la red tras el primer inicio. El servicio aparecerá como cargando durante este tiempo, esto es normal.',
-    de_DE:
-      'I2P benötigt nach dem ersten Start 3–10 Minuten, um sich ins Netzwerk zu integrieren. Der Dienst wird in dieser Zeit als „Wird geladen" angezeigt, das ist normal.',
-    pl_PL:
-      'Po pierwszym uruchomieniu I2P potrzebuje od 3 do 10 minut na integrację z siecią. Usługa będzie wyświetlana jako ładująca się, to normalne.',
-    fr_FR:
-      "I2P met 3 à 10 minutes à s'intégrer au réseau après le premier démarrage. Le service s'affichera comme en cours de chargement pendant ce temps, c'est normal.",
-  },
-  alertUninstall: {
-    en_US:
-      'Uninstalling I2P will permanently delete all I2P tunnel keys and .b32.i2p addresses. Services that depend on these addresses will no longer be reachable over I2P. Please make a backup first if you want to preserve your addresses.',
-    es_ES:
-      'Desinstalar I2P eliminará permanentemente todas las claves de túnel I2P y direcciones .b32.i2p. Los servicios que dependen de estas direcciones ya no serán accesibles a través de I2P. Haga una copia de seguridad primero si desea preservar sus direcciones.',
-    de_DE:
-      'Die Deinstallation von I2P löscht dauerhaft alle I2P-Tunnelschlüssel und .b32.i2p-Adressen. Dienste, die von diesen Adressen abhängen, sind nicht mehr über I2P erreichbar. Bitte erstellen Sie zuerst ein Backup, wenn Sie Ihre Adressen bewahren möchten.',
-    pl_PL:
-      'Odinstalowanie I2P trwale usunie wszystkie klucze tunelu I2P i adresy .b32.i2p. Usługi zależne od tych adresów nie będą już dostępne przez I2P. Wykonaj kopię zapasową, jeśli chcesz zachować swoje adresy.',
-    fr_FR:
-      "La désinstallation d'I2P supprimera définitivement toutes les clés de tunnel I2P et adresses .b32.i2p. Les services qui dépendent de ces adresses ne seront plus accessibles via I2P. Veuillez d'abord effectuer une sauvegarde si vous souhaitez conserver vos adresses.",
-  },
   description: {
     short: {
       en_US:

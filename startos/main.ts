@@ -1,5 +1,5 @@
 import * as http from 'http'
-import type { HealthCheckResult } from '@start9labs/start-sdk/package/lib/health/checkFns'
+import type { HealthCheckResult } from '@start9labs/start-sdk/lib/health/checkFns'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
@@ -27,7 +27,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     )
   }
 
-  const i2pdSub = await sdk.SubContainer.of(
+  const i2pdSub = sdk.SubContainer.of(
     effects,
     { imageId: 'i2pd' },
     sdk.Mounts.of().mountVolume({
