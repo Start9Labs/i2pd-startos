@@ -1,7 +1,7 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '2.60.0:1',
+  version: '2.60.0:2',
   releaseNotes: {
     en_US: `Updated to the StartOS 2.0 SDK (requires StartOS 0.4.0-beta.10). I2P tunnels now reach their target apps over the internal LXC bridge instead of deprecated container hostnames, and the StartOS admin UI is addressed like any other service — repairing tunnel routing and preventing other services from restarting whenever I2P is installed, updated, or removed.`,
     es_ES: `Actualizado al SDK 2.0 de StartOS (requiere StartOS 0.4.0-beta.10). Los túneles I2P ahora alcanzan sus aplicaciones de destino a través del puente LXC interno en lugar de nombres de host de contenedor obsoletos, y la interfaz de administración de StartOS se direcciona como cualquier otro servicio, reparando el enrutamiento de túneles y evitando que otros servicios se reinicien cuando se instala, actualiza o elimina I2P.`,
