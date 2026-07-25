@@ -14,6 +14,27 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     secure: { ssl: false },
   })
 
+  const samMulti = sdk.MultiHost.of(effects, 'sam-multi')
+  const samOrigin = await samMulti.bindPort(7656, {
+    protocol: null,
+    preferredExternalPort: 7656,
+    addSsl: null,
+    secure: { ssl: false },
+  })
+  const samInterface = sdk.createInterface(effects, {
+    name: i18n('I2P SAM Proxy'),
+    id: 'sam',
+    description: i18n('Unauthenticated by design. Do not expose this on LAN, clearnet, or Tor. Anyone able to reach this port can create or destroy I2P destinations.'),
+    type: 'api',
+    masked: false,
+    schemeOverride: null,
+    username: null,
+    path: '',
+    query: {},
+  })
+
+  const samReceipt = await samOrigin.export([samInterface])
+
   const socksInterface = sdk.createInterface(effects, {
     name: i18n('I2P SOCKS Proxy'),
     id: 'socks',
@@ -113,5 +134,5 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   })
   const ntcp2Receipt = await ntcp2Origin.export([ntcp2Interface])
 
-  return [sockReceipt, httpReceipt, consoleReceipt, ssu2Receipt, ntcp2Receipt]
+  return [sockReceipt, httpReceipt, consoleReceipt, ssu2Receipt, ntcp2Receipt, samReceipt]
 })

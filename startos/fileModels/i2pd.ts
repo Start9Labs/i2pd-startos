@@ -211,7 +211,11 @@ export function generateI2pdConf(config: I2pdConfig): string {
 
   lines.push('[sam]')
   lines.push('enabled = true')
-  lines.push('address = 127.0.0.1')
+  lines.push('address = 0.0.0.0')
+  // StartOS requirement: bind to 0.0.0.0, same as [httpproxy]/[socksproxy]
+  // above... SAM must be reachable from sibling subcontainers over the LXC
+  // bridge, not just from within this container's own network namespace.
+
   lines.push('port = 7656')
   lines.push('')
 

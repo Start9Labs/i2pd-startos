@@ -60,6 +60,8 @@ export default {
     73: 'Clave privada (archivo .dat, base64), opcional',
     74: 'Pegue el contenido base64 de un archivo .dat de i2pd para reutilizar una dirección .b32.i2p conocida. Deje en blanco para generar una nueva.',
     75: 'Debe ser una cadena base64 válida',
+    76: 'Proxy SAM de I2P',
+    77: 'No autenticado por diseño. No exponga esto en LAN, clearnet ni Tor. Cualquiera que pueda alcanzar este puerto puede crear o destruir destinos I2P.',
   },
   de_DE: {
     0: 'I2Pd läuft',
@@ -120,6 +122,8 @@ export default {
     73: 'Privater Schlüssel (.dat-Datei, base64), optional',
     74: 'Fügen Sie den base64-Inhalt einer vorhandenen i2pd-.dat-Datei ein, um eine bekannte .b32.i2p-Adresse wiederzuverwenden. Leer lassen für automatische Generierung.',
     75: 'Muss eine gültige Base64-Zeichenfolge sein',
+    76: 'I2P-SAM-Proxy',
+    77: 'Unauthentifiziert per Design. Nicht im LAN, Clearnet oder Tor freigeben. Jeder, der diesen Port erreichen kann, kann I2P-Ziele erstellen oder zerstören.',
   },
   pl_PL: {
     0: 'I2Pd działa',
@@ -180,6 +184,8 @@ export default {
     73: 'Klucz prywatny (plik .dat, base64), opcjonalny',
     74: 'Wklej zawartość base64 istniejącego pliku .dat i2pd, aby ponownie użyć znanego adresu .b32.i2p. Pozostaw puste, aby wygenerować nowy.',
     75: 'Musi być prawidłowym ciągiem base64',
+    76: 'Proxy SAM I2P',
+    77: 'Domyślnie brak uwierzytelniania. Nie udostępniaj tego w sieci LAN, clearnecie ani Tor. Każdy, kto może połączyć się z tym portem, może tworzyć lub usuwać adresy docelowe I2P.',
   },
   fr_FR: {
     0: 'I2Pd fonctionne',
@@ -240,5 +246,7 @@ export default {
     73: 'Clé privée (fichier .dat, base64), optionnel',
     74: "Collez le contenu base64 d'un fichier .dat i2pd existant pour réutiliser une adresse .b32.i2p connue. Laisser vide pour générer automatiquement.",
     75: 'Doit être une chaîne base64 valide',
+    76: 'Proxy SAM I2P',
+    77: 'Non authentifié par conception. Ne pas exposer ceci sur le réseau local, le clearnet ou Tor. Quiconque peut atteindre ce port peut créer ou détruire des destinations I2P.',
   },
 } as const satisfies Record<string, LangDict>
