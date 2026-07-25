@@ -1,6 +1,5 @@
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { i2pdConfig } from './fileModels/i2pd'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   // I2P exposes SOCKS proxy on port 4447 (i2p network only)
