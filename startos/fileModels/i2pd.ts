@@ -211,7 +211,7 @@ export function generateI2pdConf(config: I2pdConfig): string {
 
   lines.push('[sam]')
   lines.push('enabled = true')
-  lines.push('address = 127.0.0.1')
+  lines.push('address = 0.0.0.0')
   lines.push('port = 7656')
   lines.push('')
 

@@ -49,6 +49,16 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const sockReceipt = await socksOrigin.export([socksInterface])
   const httpReceipt = await httpOrigin.export([httpInterface])
 
+  // SAM is unauthenticated, so it is bound without an exported interface:
+  // reachable by other services on the host bridge via
+  // `sdk.host.getBridgeAddress`, never on the LAN, clearnet, or Tor.
+  await sdk.MultiHost.of(effects, 'sam-multi').bindPort(7656, {
+    protocol: null,
+    preferredExternalPort: 7656,
+    addSsl: null,
+    secure: { ssl: false },
+  })
+
   const consoleMulti = sdk.MultiHost.of(effects, 'console-multi')
   const consoleOrigin = await consoleMulti.bindPort(7070, {
     protocol: 'http',
