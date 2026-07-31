@@ -92,6 +92,7 @@ There is no upstream configuration UI.
 | Data directory        | Hardcoded   | Always `/var/lib/i2pd`                       |
 | Web console           | Hardcoded   | `0.0.0.0:7070` (UI interface; also used for health checks and hot-reload) |
 | SSU2 / NTCP2 ports    | Hardcoded   | `4450` (UDP) / `4451` (TCP)                  |
+| SAM API port          | Hardcoded   | `0.0.0.0:7656` (host bridge only, not exported) |
 
 ---
 
@@ -119,6 +120,13 @@ There is no upstream configuration UI.
 - **Type:** UI interface ("I2P Router Console")
 - **Purpose:** Monitor and manage the I2P router (network status, tunnels, known routers)
 - **Note:** `strictheaders` is disabled so the StartOS reverse proxy can reach it; authentication is handled by StartOS
+
+### SAM API (bridge-only)
+
+- **Port:** 7656
+- **Purpose:** Lets another service on the server open I2P sessions through this router
+- **Binding:** `0.0.0.0:7656`, bound with no exported interface — reachable only on `lo`/`lxcbr0`, resolvable by a consumer with `sdk.host.getBridgeAddress`
+- **Note:** SAM is unauthenticated; exporting it as a service interface would put a control API on the LAN by default
 
 ### SSU2 / NTCP2 Transports (p2p)
 
@@ -213,8 +221,10 @@ any service's interface directly from the service's URL table.
    minutes vs. 30 seconds for Tor.
 3. **Floodfill, not relay/bridge.** I2P uses floodfill nodes instead of Tor's
    relay/bridge architecture.
-4. **No SAM protocol exposure.** This package does not expose the SAM (Simple
-   Anonymous Messaging) API.
+4. **SAM is bridge-only.** The SAM (Simple Anonymous Messaging) API is bound so
+   other services on the server can reach it over the host bridge, but it is not
+   exported as a service interface, so it is never reachable from the LAN,
+   clearnet, or Tor.
 
 ---
 
@@ -243,6 +253,7 @@ ports:
   console: 7070 (web UI; also health checks and hot-reload)
   ssu2: 4450 (UDP transport)
   ntcp2: 4451 (TCP transport)
+  sam: 7656 (host bridge only, no exported interface)
 dependencies: none
 plugins: [url-v0]
 startos_managed_config:

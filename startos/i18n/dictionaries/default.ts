@@ -59,8 +59,6 @@ const dict = {
   'Private Key (.dat file, base64), optional': 73,
   'Paste the base64-encoded contents of an existing i2pd .dat key file to reuse a known .b32.i2p address. Leave blank to auto-generate a new address. Only EdDSA-SHA512-ED25519 + ElGamal keys (679 bytes) are supported.': 74,
   'Must be a valid base64 string': 75,
-  'I2P SAM Proxy': 76,
-  'Unauthenticated by design. Do not expose this on LAN, clearnet, or Tor. Anyone able to reach this port can create or destroy I2P destinations.': 77,
 } as const
 
 export type I18nKey = keyof typeof dict

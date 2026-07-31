@@ -1,13 +1,13 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '2.60.0:3',
+  version: '2.60.0:4',
   releaseNotes: {
-    en_US: `Updated to the StartOS 2.0 SDK (requires StartOS 0.4.0-beta.10). I2P tunnels now reach their target apps over the internal LXC bridge instead of deprecated container hostnames, and the StartOS admin UI is addressed like any other service — repairing tunnel routing and preventing other services from restarting whenever I2P is installed, updated, or removed.`,
-    es_ES: `Actualizado al SDK 2.0 de StartOS (requiere StartOS 0.4.0-beta.10). Los túneles I2P ahora alcanzan sus aplicaciones de destino a través del puente LXC interno en lugar de nombres de host de contenedor obsoletos, y la interfaz de administración de StartOS se direcciona como cualquier otro servicio, reparando el enrutamiento de túneles y evitando que otros servicios se reinicien cuando se instala, actualiza o elimina I2P.`,
-    de_DE: `Auf das StartOS-2.0-SDK aktualisiert (erfordert StartOS 0.4.0-beta.10). I2P-Tunnel erreichen ihre Ziel-Apps jetzt über die interne LXC-Bridge statt über veraltete Container-Hostnamen, und die StartOS-Verwaltungsoberfläche wird wie jeder andere Dienst adressiert — das repariert das Tunnel-Routing und verhindert, dass andere Dienste neu starten, wenn I2P installiert, aktualisiert oder entfernt wird.`,
-    pl_PL: `Zaktualizowano do SDK StartOS 2.0 (wymaga StartOS 0.4.0-beta.10). Tunele I2P docierają teraz do docelowych aplikacji przez wewnętrzny mostek LXC zamiast przestarzałych nazw hostów kontenerów, a interfejs administracyjny StartOS jest adresowany jak każda inna usługa — naprawia to routing tuneli i zapobiega restartowaniu innych usług przy instalacji, aktualizacji lub usunięciu I2P.`,
-    fr_FR: `Mise à jour vers le SDK StartOS 2.0 (nécessite StartOS 0.4.0-beta.10). Les tunnels I2P atteignent désormais leurs applications cibles via le pont LXC interne au lieu de noms d'hôtes de conteneurs obsolètes, et l'interface d'administration de StartOS est adressée comme n'importe quel autre service — ce qui répare le routage des tunnels et empêche d'autres services de redémarrer lors de l'installation, de la mise à jour ou de la suppression d'I2P.`,
+    en_US: `The SAM API (port 7656) now listens on the host bridge instead of loopback, so other services on your server can reach it. It is not exported as a service interface, so it remains unreachable from the LAN, clearnet, or Tor.`,
+    es_ES: `La API SAM (puerto 7656) ahora escucha en el puente del host en lugar de en loopback, para que otros servicios de su servidor puedan alcanzarla. No se exporta como interfaz de servicio, por lo que sigue siendo inaccesible desde la LAN, la red abierta o Tor.`,
+    de_DE: `Die SAM-API (Port 7656) lauscht jetzt auf der Host-Bridge statt auf Loopback, sodass andere Dienste auf Ihrem Server sie erreichen können. Sie wird nicht als Dienstschnittstelle exportiert und bleibt daher aus dem LAN, dem Clearnet und über Tor unerreichbar.`,
+    pl_PL: `API SAM (port 7656) nasłuchuje teraz na mostku hosta zamiast na pętli zwrotnej, dzięki czemu inne usługi na serwerze mogą się z nim połączyć. Nie jest eksportowane jako interfejs usługi, więc pozostaje nieosiągalne z sieci LAN, clearnetu i Tora.`,
+    fr_FR: `L'API SAM (port 7656) écoute désormais sur le pont de l'hôte au lieu de la boucle locale, afin que les autres services de votre serveur puissent l'atteindre. Elle n'est pas exportée comme interface de service et reste donc inaccessible depuis le réseau local, le clearnet ou Tor.`,
   },
   migrations: {
     up: async ({ effects }) => {},
