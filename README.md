@@ -1,19 +1,15 @@
 <p align="center">
-  <img src="icon.svg" alt="I2P Logo" width="21%">
+  <img src="icon.png" alt="I2Pd Logo" width="21%">
 </p>
 
-# I2P on StartOS
+# I2Pd on StartOS
 
-> **Upstream docs:** <https://i2pd.readthedocs.io/>
->
 > Everything not listed in this document should behave the same as upstream
-> I2Pd. If a feature, setting, or behavior is not mentioned here, the
-> upstream documentation is accurate and fully applicable.
+> i2pd. If a feature, setting, or behavior is not mentioned here, the upstream
+> documentation is accurate and fully applicable — see the Documentation
+> section of `instructions.md` for links.
 
-Peer-to-peer network for I2P services and decentralized applications. Run I2P
-services (.b32.i2p addresses) to make your installed apps accessible over the
-I2P network. Provides SOCKS and HTTP proxies for accessing I2P addresses, and
-can optionally operate as a floodfill node to support the network.
+[i2pd](https://github.com/PurpleI2P/i2pd) is a C++ router for the I2P network. On StartOS it does two jobs: it lets you reach I2P sites through a proxy, and — through the URL plugin — it gives **any other installed service** a `.b32.i2p` address, the same way the Tor package gives them onion addresses.
 
 - **Upstream repo:** <https://github.com/PurpleI2P/i2pd>
 - **Wrapper repo:** <https://github.com/Start9-Community/i2pd-startos>
@@ -24,245 +20,193 @@ can optionally operate as a floodfill node to support the network.
 
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Installation and First-Run Flow](#installation-and-first-run-flow)
-- [Configuration Management](#configuration-management)
+- [File Models](#file-models)
+- [Dependencies](#dependencies)
 - [Network Access and Interfaces](#network-access-and-interfaces)
-- [Actions](#actions-startos-ui)
-- [URL Plugin](#url-plugin)
-- [Backups and Restore](#backups-and-restore)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
 - [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
-- [What Is Unchanged from Upstream](#what-is-unchanged-from-upstream)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-| Property      | Value                                         |
-| ------------- | --------------------------------------------- |
-| Base image    | Alpine Linux edge with upstream `i2pd` package |
-| Architectures | x86_64, aarch64, riscv64                      |
-| Command       | `i2pd --conf=/var/lib/i2pd/etc/i2pd/i2pd.conf --datadir=/var/lib/i2pd` |
-| User          | `i2pd` (non-root)                              |
+One image, built here.
 
-The image is minimal, just Alpine + the `i2pd` package. No custom patches
-or modifications to the I2Pd binary.
+| Property      | Value                               |
+| ------------- | ----------------------------------- |
+| Image         | Built from this repo's `Dockerfile` |
+| Architectures | x86_64, aarch64, riscv64            |
 
----
+| Subcontainer | Purpose                                                         |
+| ------------ | --------------------------------------------------------------- |
+| `i2pd-sub`   | The permissions oneshot and the router — the one to `attach` to |
+
+**This package declares the `url-v0` plugin**, which is what lets it hand addresses to other services. That is the significant thing about it: most packages are only reachable, while this one makes other packages reachable.
 
 ## Volume and Data Layout
 
-| Volume    | Mount Point     | Contents                                               |
-| --------- | --------------- | ------------------------------------------------------ |
-| `i2pd`    | `/var/lib/i2pd` | I2P data directory, tunnel keys, config files          |
+One volume, holding the router's identity and every tunnel's keys.
 
-The single source of truth for all settings is `config.json` on the `i2pd`
-volume (a zod-typed file model). The native `i2pd.conf` and `tunnels.conf`
-files under `etc/i2pd/` on the volume are write-only artifacts regenerated
-from `config.json` on every start, on init, and after every action; i2pd is
-pointed at them via `--conf`, and `tunnels.conf` changes are hot-reloaded
-through the web console without a restart.
+| Volume | Mount Point | Purpose                                            |
+| ------ | ----------- | -------------------------------------------------- |
+| `i2pd` | —           | Router identity, generated config, and tunnel keys |
 
-I2P tunnel keys are stored under
-`/var/lib/i2pd/tunnels/<packageId>/<hostId>/tunnel_<index>/`.
+| Path                     | Written by  | Holds                              |
+| ------------------------ | ----------- | ---------------------------------- |
+| `etc/i2pd/i2pd.conf`     | The package | The generated router configuration |
+| `etc/i2pd/tunnels.conf`  | The package | The generated tunnel definitions   |
+| One directory per tunnel | The package | That tunnel's key file             |
 
----
+**Each tunnel's key file is what owns its address.** A `.b32.i2p` address is derived from the key, so losing the key loses the address permanently — there is no way to reissue the same one. This is the single most consequential fact about the package, and it drives everything under [Backups and Restore](#backups-and-restore).
 
-## Installation and First-Run Flow
+## File Models
 
-1. No setup wizard or credentials -- I2Pd starts immediately with SOCKS and
-   HTTP proxies on ports 4447 and 4444 respectively.
-2. I2P services (tunnels) are added via the URL plugin (see below).
-3. **Bootstrap takes 3-10 minutes** for I2Pd to integrate into the I2P network.
+One model, and two generated files that are not models.
 
----
+| File           | Format | Modelled                | Written by                    |
+| -------------- | ------ | ----------------------- | ----------------------------- |
+| `config.json`  | JSON   | Yes — `FileHelper.json` | Init, the actions, the plugin |
+| `i2pd.conf`    | INI    | No — generated          | The package, from the model   |
+| `tunnels.conf` | INI    | No — generated          | The package, from the model   |
 
-## Configuration Management
+**The two `.conf` files are outputs, not inputs.** They are regenerated from the model whenever it changes, and re-emitted on every init — so an upgrade picks up generator changes shipped with the new package version. A hand edit to either is overwritten.
 
-All configuration is managed through StartOS actions and the URL plugin.
-There is no upstream configuration UI.
+The model holds the router settings and a **nested map of tunnels**, keyed by package, then host, then index. That map is the package's record of every address it has issued.
 
-| Setting               | Managed By  | Method                                      |
-| --------------------- | ----------- | ------------------------------------------- |
-| I2P tunnels (services)| URL plugin  | Add/remove via service interface URLs        |
-| Router settings       | Action      | Configure Router                             |
-| SOCKS proxy port      | Hardcoded   | Always `0.0.0.0:4447`                       |
-| HTTP proxy port       | Hardcoded   | Always `0.0.0.0:4444`                       |
-| Data directory        | Hardcoded   | Always `/var/lib/i2pd`                       |
-| Web console           | Hardcoded   | `0.0.0.0:7070` (UI interface; also used for health checks and hot-reload) |
-| SSU2 / NTCP2 ports    | Hardcoded   | `4450` (UDP) / `4451` (TCP)                  |
-| SAM API port          | Hardcoded   | `0.0.0.0:7656` (host bridge only, not exported) |
+Router settings cover the bandwidth share, whether to relay transit traffic, whether to run as a floodfill router, the log level, and optional overrides for the external address and reseed source.
 
----
+## Dependencies
+
+None. i2pd joins the I2P network directly and needs nothing else on the server.
+
+Other services depend on **it**, though not as a StartOS dependency: they receive addresses through the URL plugin.
 
 ## Network Access and Interfaces
 
-### SOCKS Proxy (I2P network only)
+Five interfaces, plus one port deliberately bound **without** one.
 
-- **Port:** 4447
-- **Protocol:** SOCKS5
-- **Purpose:** Access .b32.i2p addresses over the I2P network
-- **Binding:** `0.0.0.0:4447` (accessible to other services and LAN)
-- **Limitation:** Cannot be used as a general privacy proxy like Tor's SOCKS5
+| Interface           | Id        | Type | Port | Description                        |
+| ------------------- | --------- | ---- | ---- | ---------------------------------- |
+| I2P HTTP Proxy      | `http`    | api  | 4444 | For browsing I2P sites             |
+| I2P SOCKS Proxy     | `socks`   | api  | 4447 | The same, over SOCKS               |
+| I2P Router Console  | `console` | ui   | 7070 | Monitoring and managing the router |
+| I2P SSU2 Transport  | `ssu2`    | p2p  | 4450 | Peer-to-peer transport (UDP)       |
+| I2P NTCP2 Transport | `ntcp2`   | p2p  | 4451 | Peer-to-peer transport (TCP)       |
 
-### HTTP Proxy (I2P network only)
+**The proxies are not general-purpose privacy proxies.** They reach `.i2p` addresses only — unlike Tor's SOCKS proxy, pointing a browser at them does not anonymize ordinary web traffic.
 
-- **Port:** 4444
-- **Protocol:** HTTP
-- **Purpose:** HTTP access to .b32.i2p addresses
-- **Binding:** `0.0.0.0:4444` (accessible to other services and LAN)
-- **Limitation:** Cannot be used as a general privacy proxy
+**SAM is bound on 7656 with no interface exported**, and that is a security decision: the SAM interface is unauthenticated, so it is reachable by other services over the internal bridge and from nowhere else — never on the LAN, clearnet, or Tor.
 
-### Router Console (web UI)
+**The two transport ports are exported so they can be forwarded.** Without a consistent external port mapping the router reports itself firewalled behind a symmetric NAT, and inbound tunnel delivery fails — which breaks every server tunnel this package issues. They are interfaces so the user can allow that forwarding.
 
-- **Port:** 7070
-- **Type:** UI interface ("I2P Router Console")
-- **Purpose:** Monitor and manage the I2P router (network status, tunnels, known routers)
-- **Note:** `strictheaders` is disabled so the StartOS reverse proxy can reach it; authentication is handled by StartOS
+## Installation and First-Run Flow
 
-### SAM API (bridge-only)
+Install seeds the configuration and generates the two `.conf` files. The router starts immediately.
 
-- **Port:** 7656
-- **Purpose:** Lets another service on the server open I2P sessions through this router
-- **Binding:** `0.0.0.0:7656`, bound with no exported interface — reachable only on `lo`/`lxcbr0`, resolvable by a consumer with `sdk.host.getBridgeAddress`
-- **Note:** SAM is unauthenticated; exporting it as a service interface would put a control API on the LAN by default
+**The first three to ten minutes are spent finding peers and integrating into the network**, and the router is not usable until that finishes. A "loading" state on a fresh install is normal, not a fault.
 
-### SSU2 / NTCP2 Transports (p2p)
+Addresses for other services are not created here — they are requested from the other service's own interface settings, through the plugin, which is why this package's own actions for them are hidden.
 
-- **Ports:** 4450 (SSU2, UDP) and 4451 (NTCP2, TCP)
-- **Purpose:** Fixed inbound transport ports so consistent port-forwarding rules are possible; forwarding them on your router (plus setting **External IP / Hostname**) lets the router classify as directly reachable ("O-type")
+## Actions
 
-### Floodfill Node (conditional)
-
-- **Enabled via:** Configure Router action (Floodfill toggle)
-- **Purpose:** Participate as a floodfill node to support the I2P network
-- **Only active when floodfill is enabled in Configure Router**
-
----
-
-## Actions (StartOS UI)
+Three actions, and two of them are hidden.
 
 ### Configure Router
 
-- **ID:** `configure-router`
-- **Visibility:** Enabled (user-facing)
-- **Purpose:** Configure I2P router settings
-- **Availability:** Any status
-- **Inputs:**
-  - **Floodfill** -- participate as a floodfill node (default: off; requires ≥ Standard bandwidth)
-  - **Bandwidth** -- Low (32 KB/s), Standard (256 KB/s), High (full speed), Unlimited (default: Standard)
-  - **Transit Tunnels** -- relay traffic for other I2P users (default: on)
-  - **Log Level** -- none / error / warn / info / debug (default: warn)
-  - **External IP / Hostname** -- published in RouterInfo instead of peer-test auto-detection (fixes Symmetric NAT classification under double-NAT; optional)
-  - **Custom Reseed URL** -- HTTPS su3 reseed endpoint used instead of the default reseed servers (optional)
-- **Effect:** Rewrites `i2pd.conf`/`tunnels.conf` and restarts the service (`i2pd.conf` is not hot-reloadable)
+The router's own settings: bandwidth share, transit traffic, floodfill, log level, external address, and reseed URL.
 
-### Add I2P Tunnel (hidden)
+- **What it changes:** the router settings in the model, and through them the generated configuration.
+- **Cost:** applies on restart.
+- **Repeat safety:** idempotent.
+- **The settings with real consequences are the network-facing ones.** Relaying transit traffic and running as a floodfill router both make this node carry other people's traffic — good for the network, and a meaningful increase in bandwidth and connections. The bandwidth share caps that.
+- **The external address override is for hosts the router cannot detect correctly**, and setting it wrongly is a good way to become unreachable.
 
-- **ID:** `add-i2p-tunnel`
-- **Visibility:** Hidden (invoked by the URL plugin, not directly by users)
-- **Purpose:** Add an I2P server tunnel for a specific service interface URL
-- **Inputs:**
-  - **SSL** -- whether to serve with SSL (hidden if interface doesn't support it)
-  - **Address** -- choose an existing .b32.i2p address or create a new one
+### Add I2P Tunnel — hidden
 
-### Delete I2P Tunnel (hidden)
+**Not user-facing in the Actions list.** It is the action the URL plugin invokes when a user asks for an I2P address on another service's interface, so it is reached from _there_, not from here.
 
-- **ID:** `delete-i2p-tunnel`
-- **Visibility:** Hidden (invoked by the URL plugin)
-- **Purpose:** Remove a specific port binding from an I2P tunnel; deletes
-  the entire .b32.i2p address and keys if no port bindings remain
+- **What it changes:** generates a key, derives the address, records the tunnel in the model, and regenerates the tunnel configuration.
+- **It can also import an existing key**, which is how an address is moved between servers.
+- **Repeat safety:** each run without an imported key produces a **new** address.
 
----
+### Delete I2P Tunnel — hidden
 
-## URL Plugin
+The counterpart, also invoked through the plugin.
 
-I2P registers as a `url-v0` plugin, which integrates with the StartOS
-interface URL system. This allows users to add/remove .b32.i2p addresses for
-any service's interface directly from the service's URL table.
+- **What it changes:** removes the tunnel and **deletes its key**.
+- **This is irreversible.** The address cannot be reissued without the key it was derived from.
 
-- **Table action:** `add-i2p-tunnel` -- appears in the URL table for all services
-- **Remove action:** `delete-i2p-tunnel` -- attached to each exported .b32.i2p URL
-- **Stale cleanup:** On init, entries referencing interfaces that no longer
-  exist are automatically removed along with their key material
+## Tasks
 
----
-
-## Backups and Restore
-
-- **Backed up:** Entire `i2pd` volume (I2P tunnel keys, config files)
-- **Restore behavior:** Volume-level restore; I2P tunnel keys are preserved,
-  so .b32.i2p addresses survive backup/restore cycles.
-- **Uninstall warning:** Uninstalling I2P permanently deletes all I2P tunnel
-  keys and .b32.i2p addresses.
-
----
+None. This package raises no tasks, so the service is never held on a prompt and its ordinary controls are always available.
 
 ## Health Checks
 
-- **Method:** Liveness check against the i2pd web console on `127.0.0.1:7070`
-- **States:**
-  - **Loading** -- "I2Pd is starting up" (connection refused; console not open yet)
-  - **Success** -- "I2Pd is running" (console responds 200)
-  - **Failure** -- "I2Pd is not responding" (timeout) / "I2Pd HTTP API error" (non-200)
-- **Timeout:** 5 seconds per check
-- **Note:** This is a daemon-liveness check, not a network-integration check.
-  Full integration into the I2P network takes **3-10 minutes** after the check
-  reports success (an install alert sets this expectation for the user)
+One check, on the router.
 
----
+| Check  | Displayed as  | Method             |
+| ------ | ------------- | ------------------ |
+| `i2pd` | "I2P Network" | The router's state |
+
+It reports the router's integration with the network rather than a bound port, which is what makes the first several minutes read as loading rather than failing.
+
+A router that stays unintegrated for much longer than that is usually a network-reachability problem — the transport ports not being forwarded is the common cause, and it also shows in the router console as a firewalled status.
+
+## Backups and Restore
+
+The `i2pd` volume is copied wholesale — `sdk.Backups.ofVolumes('i2pd')`. That is the router identity, the configuration, and **every tunnel key**.
+
+**This backup is the only thing standing between you and permanently losing every `.b32.i2p` address you have issued.** The addresses are derived from the keys; without a key, an address is gone and cannot be recreated, and any service that published it becomes unreachable at it forever.
+
+**Uninstalling the package deletes those keys**, with the same effect. Take a backup first if the addresses matter.
+
+A restored instance comes back with the same router identity and the same addresses, and needs several minutes to re-integrate with the network before they resolve again.
 
 ## Limitations and Differences
 
-1. **I2P-network-only proxies.** SOCKS and HTTP proxies only work for .b32.i2p
-   addresses, not as general privacy proxies like Tor's SOCKS5.
-2. **Longer bootstrap time.** Integration into the I2P network takes 3-10
-   minutes vs. 30 seconds for Tor.
-3. **Floodfill, not relay/bridge.** I2P uses floodfill nodes instead of Tor's
-   relay/bridge architecture.
-4. **SAM is bridge-only.** The SAM (Simple Anonymous Messaging) API is bound so
-   other services on the server can reach it over the host bridge, but it is not
-   exported as a service interface, so it is never reachable from the LAN,
-   clearnet, or Tor.
-
----
-
-## What Is Unchanged from Upstream
-
-- I2Pd binary is the upstream Alpine package, unmodified
-- I2P tunnel protocol behavior
-- I2P network bootstrap and peer discovery
-- Floodfill node participation
-- SOCKS proxy protocol (for I2P addresses)
-- HTTP proxy protocol (for I2P addresses)
+1. **Tunnel keys are irreplaceable.** Losing them — by uninstalling, or by restoring without a backup — permanently loses every address issued.
+2. **The proxies reach `.i2p` addresses only.** They are not a general privacy proxy.
+3. **SAM is unauthenticated**, and is deliberately reachable only from other services on this server.
+4. **The generated `.conf` files are overwritten** on every init and every configuration change; hand edits do not survive.
+5. **Both transport ports need forwarding** for inbound tunnels to work, or the router reports itself firewalled.
+6. **Integration takes minutes** after every start, not seconds.
+7. **The tunnel actions are hidden**, because they belong to the plugin flow on other services' pages.
 
 ---
 
 ## Quick Reference for AI Consumers
 
 ```yaml
-package_id: i2p
-image: Alpine Linux edge + i2pd package
-architectures: [x86_64, aarch64, riscv64]
+package_id: i2pd
+image: built from ./Dockerfile
+architectures:
+  - x86_64
+  - aarch64
+  - riscv64
+subcontainers:
+  - i2pd-sub
 volumes:
-  i2pd: /var/lib/i2pd
-ports:
-  socks: 4447 (I2P-network-only, 0.0.0.0)
-  http_proxy: 4444 (I2P-network-only, 0.0.0.0)
-  console: 7070 (web UI; also health checks and hot-reload)
-  ssu2: 4450 (UDP transport)
-  ntcp2: 4451 (TCP transport)
-  sam: 7656 (host bridge only, no exported interface)
-dependencies: none
-plugins: [url-v0]
-startos_managed_config:
-  - config.json (source of truth, zod file model)
-  - i2pd.conf / tunnels.conf (write-only, regenerated from config.json)
+  i2pd: router identity, generated config, and one directory of keys per tunnel
+file_models:
+  - config.json # i2pd.conf and tunnels.conf are generated from it, not modelled
+startos_managed_env_vars: []
+dependencies: []
+interfaces:
+  http: { type: api, port: 4444 } # .i2p addresses only
+  socks: { type: api, port: 4447 } # .i2p addresses only
+  console: { type: ui, port: 7070 }
+  ssu2: { type: p2p, port: 4450 } # forward for inbound tunnels
+  ntcp2: { type: p2p, port: 4451 } # forward for inbound tunnels
 actions:
-  - configure-router (user-facing)
-  - add-i2p-tunnel (hidden, URL plugin)
-  - delete-i2p-tunnel (hidden, URL plugin)
-languages: [en_US, es_ES, de_DE, pl_PL, fr_FR]
-bootstrap_time: 3-10 minutes
+  - configure-router
+  - add-i2p-tunnel # hidden; invoked via the URL plugin
+  - delete-i2p-tunnel # hidden; invoked via the URL plugin
+tasks: []
+health_checks:
+  - i2pd # displayed "I2P Network"; reports network integration
 ```

@@ -1,6 +1,11 @@
 # I2P Instructions
 
+## Documentation
+
+- [i2pd documentation](https://i2pd.readthedocs.io/) — the upstream operator and configuration reference for the router.
+
 ## Getting Started
+
 I2P starts immediately upon launch. The first 3 to 10 minutes are spent finding peers and integrating into the network. The status card will show a "loading" message during this initialization period, which is completely normal.
 
 ## Warnings
@@ -8,24 +13,30 @@ I2P starts immediately upon launch. The first 3 to 10 minutes are spent finding 
 - **Uninstalling I2P permanently deletes all I2P tunnel keys and `.b32.i2p` addresses.** Any service reachable through one of those addresses will lose it. Make a backup first if you want to keep your addresses.
 
 ## Browsing I2P Sites
+
 To browse the invisible web, configure your web browser's proxy settings to use this server's IP address with the following ports:
+
 - **HTTP proxy:** port 4444
 - **SOCKS5 proxy:** port 4447
 
 Please note that these proxies only work for routing traffic to internal .i2p and .b32.i2p addresses. They are not general-purpose privacy proxies for accessing the regular internet (clearnet).
 
 ## Hosting Services on I2P
+
 To assign a hidden .b32.i2p address to any installed application, open that specific service, navigate to the Interfaces section, and add a new I2P address from the URL table to make it accessible within the network. When adding one you can paste the base64-encoded contents of an existing i2pd `.dat` key file to reuse a known address, or leave it blank to generate a fresh one.
 
 The address appears in the URL table immediately, but expect a few minutes before it is reachable over I2P — the router has to build inbound tunnels and publish the address to the network first.
 
 ## Router Console
+
 Open the **I2P Router Console** from this service's Interfaces section to monitor the router: network status (OK / Firewalled), tunnel creation success rate, known routers, and active tunnels.
 
 ## NAT and Reachability
+
 I2P may work behind a NAT out of the box by using intermediary relay nodes. If it does not, or your tunnels remain unreachable, you will need to manually port-forward.
 
 ### Port Forwarding Steps
+
 For significantly better performance and to be classified as a directly-reachable ("O-type") router:
 
 1. **Configure your router to forward:**
