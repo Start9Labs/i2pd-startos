@@ -9,7 +9,6 @@ export const manifest = setupManifest({
   upstreamRepo: 'https://github.com/PurpleI2P/i2pd',
   marketingUrl: 'https://i2pd.website/',
   donationUrl: 'https://i2pd.website/en/donate',
-  docsUrls: ['https://i2pd.readthedocs.io/'],
   description: i18n.description,
   volumes: ['i2pd'],
   images: {
