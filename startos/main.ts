@@ -133,8 +133,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // Queued by the Reset Router action, applied here because no daemon exists
   // yet. Deny-list rather than allow-list: `tunnels/` holds the key material
   // behind every issued .b32.i2p, and `router.keys` is this router's identity.
+  // `router.info` stays too — it is derived from those keys, but i2pd meets
+  // keys-without-descriptor with a "malformed, creating new" path that emits
+  // one Identity parse error per netDb entry it was mid-way through.
   if (config?.resetPending) {
-    for (const path of ['netDb', 'peerProfiles', 'router.info']) {
+    for (const path of ['netDb', 'peerProfiles']) {
       await rm(sdk.volumes.i2pd.subpath(path), { recursive: true, force: true })
     }
     await i2pdConfig.merge(effects, { resetPending: false })

@@ -137,7 +137,7 @@ Clears what the router has cached about the I2P network and restarts, so it sele
 - **What it changes:** it queues the wipe; the deletion happens at the next start, before any daemon exists — a running router holds netDb and peer profiles in memory and would write the same ones straight back.
 - **Cost:** several minutes offline while it reseeds.
 - **Repeat safety:** safe to re-run.
-- **Your addresses and the router identity are not affected.** The wipe is a deny-list of derived state — `netDb/`, `peerProfiles/`, `router.info` — so `tunnels/` and `router.keys` are never in scope.
+- **Your addresses and the router identity are not affected.** The wipe is a deny-list — `netDb/` and `peerProfiles/` — so `tunnels/`, `router.keys` and `router.info` are never in scope.
 - **Availability: only while the service is running.**
 
 ### Add I2P Tunnel — hidden
@@ -180,7 +180,9 @@ The empty-network-database case is usually not an I2P fault: reseeding resolves 
 
 ## Backups and Restore
 
-The `i2pd` volume, minus what the router rebuilds for itself. Excluded: `netDb/`, `peerProfiles/`, `addressbook/`, `tags/`, `certificates/`, `router.info`, and the pidfile — all re-derived by reseeding. What is left is the configuration, the router identity in `router.keys`, and **every tunnel key**.
+The `i2pd` volume, minus what the router rebuilds for itself. Excluded: `netDb/`, `peerProfiles/`, `addressbook/`, `tags/`, `certificates/`, and the pidfile — all re-derived by reseeding. What is left is the configuration, the router identity in `router.keys` and `router.info`, and **every tunnel key**.
+
+**`router.info` is derived state that is deliberately kept.** Restoring `router.keys` without it lands i2pd on a "malformed, creating new" path that emits one `Identity` parse error per netDb entry before it recovers.
 
 **This backup is the only thing standing between you and permanently losing every `.b32.i2p` address you have issued.** The addresses are derived from the keys; without a key, an address is gone and cannot be recreated, and any service that published it becomes unreachable at it forever.
 
