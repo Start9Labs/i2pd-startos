@@ -1,5 +1,6 @@
 import { rm } from 'fs/promises'
 import {
+  defaultRouter,
   i2pdConfig,
   tunnelDir,
   generateI2pdConf,
@@ -94,11 +95,8 @@ export const deleteI2pTunnel = sdk.Action.withInput(
     const updatedConfig = {
       i2pServices,
       floodfill: config?.floodfill ?? { enabled: false },
-      router: config?.router ?? {
-        bandwidth: 'O' as const,
-        transit: true,
-        loglevel: 'warn' as const,
-      },
+      router: config?.router ?? defaultRouter,
+      resetPending: config?.resetPending ?? false,
     }
     await i2pdConfig.write(effects, updatedConfig)
     await sdk.volumes.i2pd.writeFile(

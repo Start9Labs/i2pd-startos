@@ -1,10 +1,6 @@
 export const DEFAULT_LANG = 'en_US'
 
 const dict = {
-  'I2Pd is running': 0,
-  'I2Pd is not responding': 1,
-  'I2Pd is starting up': 2,
-  'I2Pd HTTP API error': 4,
   'I2P SOCKS Proxy': 11,
   'SOCKS proxy for I2P network (i2p addresses only)': 12,
   'I2P HTTP Proxy': 13,
@@ -30,7 +26,6 @@ const dict = {
   'High (full speed)': 34,
   Unlimited: 35,
   'Transit Tunnels': 36,
-  'Relay traffic for other I2P users': 37,
   'Log Level': 38,
   'Logging verbosity for I2Pd': 39,
   None: 40,
@@ -59,6 +54,24 @@ const dict = {
   'Private Key (.dat file, base64), optional': 73,
   'Paste the base64-encoded contents of an existing i2pd .dat key file to reuse a known .b32.i2p address. Leave blank to auto-generate a new address. Only EdDSA-SHA512-ED25519 + ElGamal keys (679 bytes) are supported.': 74,
   'Must be a valid base64 string': 75,
+  "Bitcoin reaches I2P through the SAM bridge, not a server tunnel, and generates its own .b32.i2p address. Enable it under Bitcoin's Peer Settings instead.": 76,
+  "Relay traffic for other I2P users. While this is disabled the router carries only your own services' traffic, and the bandwidth class above costs nothing.": 77,
+  Disabled: 78,
+  Enabled: 79,
+  Share: 80,
+  'Percentage of the bandwidth class above offered to relayed traffic.': 81,
+  'Maximum Transit Tunnels': 82,
+  'Upper bound on how many tunnels this router will carry for others at once.': 83,
+  'Reset Router': 84,
+  "Clear the router's cached view of the I2P network and restart, so it finds peers from scratch.": 85,
+  'The router is offline for several minutes while it reseeds. Your .b32.i2p addresses and the router identity are not affected.': 86,
+  'Reset Queued': 87,
+  'The router is restarting and will rebuild its network database. It takes several minutes to integrate again.': 88,
+  'Starting the I2P router': 89,
+  'No peers found. The router could not reach a reseed server, which usually means this server cannot resolve DNS. Check System > DNS Servers.': 90,
+  'The I2P router reported error status ${status}': 91,
+  'Building the network database': 92,
+  'Integrated with the I2P network (${peers} active peers)': 93,
 } as const
 
 export type I18nKey = keyof typeof dict

@@ -1,4 +1,5 @@
 import {
+  defaultRouter,
   i2pdConfig,
   nextKey,
   tunnelDir,
@@ -158,6 +159,21 @@ export const addI2pTunnel = sdk.Action.withInput(
       )
     }
 
+    // Bitcoin speaks I2P over the SAM bridge and derives its own destination
+    // from a key it keeps itself, so a server tunnel here would deliver plain
+    // TCP that bitcoind reads as bridge-IPv4 peers, never learning or gossiping
+    // the address it was reached at.
+    if (
+      packageId === 'bitcoind' &&
+      (hostId === 'peer' || hostId === 'peer-local')
+    ) {
+      throw new Error(
+        i18n(
+          "Bitcoin reaches I2P through the SAM bridge, not a server tunnel, and generates its own .b32.i2p address. Enable it under Bitcoin's Peer Settings instead.",
+        ),
+      )
+    }
+
     const host = await sdk.host.get(effects, { hostId, packageId }).once()
     const binding = host?.bindings[internalPort]
 
@@ -253,11 +269,8 @@ export const addI2pTunnel = sdk.Action.withInput(
     const updatedConfig = {
       i2pServices,
       floodfill: config?.floodfill ?? { enabled: false },
-      router: config?.router ?? {
-        bandwidth: 'O' as const,
-        transit: true,
-        loglevel: 'warn' as const,
-      },
+      router: config?.router ?? defaultRouter,
+      resetPending: config?.resetPending ?? false,
     }
     await i2pdConfig.write(effects, updatedConfig)
     await sdk.volumes.i2pd.writeFile(

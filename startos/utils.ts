@@ -5,6 +5,42 @@ import { base32 } from 'rfc4648'
 import { sdk } from './sdk'
 
 /**
+ * The SAM bridge. Bound without an exported interface, so it is reachable only
+ * on lo/lxcbr0 — a dependent resolves it with
+ * `sdk.host.getBridgeAddress(effects, { packageId: 'i2pd', hostId: samHostId,
+ * internalPort: samPort })`. Keeping it off the LAN is load-bearing: SAM is
+ * unauthenticated, and a caller can create server destinations through it, not
+ * merely proxy outbound.
+ *
+ * These two names are a published contract for dependent packages — import
+ * them rather than hardcoding either. Nothing outside this repo's own
+ * `interfaces.ts` references them here, so a rename breaks dependents with no
+ * signal in this repo; `utils.ts` resolving as a module path is load-bearing
+ * for the same reason.
+ *
+ * Do not tidy the `-multi` off the host id. Rebinding under a new id strands
+ * the old host holding this external port, and `MultiHost.retire()` — the way
+ * to release it — is not in the pinned SDK.
+ */
+export const samHostId = 'sam-multi'
+export const samPort = 7656
+
+/**
+ * The SOCKS5 proxy, for a dependent that must dial `.b32.i2p` peers itself.
+ * Same contract as the SAM pair above; resolve it the same way. It reaches
+ * `.i2p` addresses only and is not a general privacy proxy.
+ */
+export const socksHostId = 'socks-multi'
+export const socksPort = 4447
+
+/** The web console, which is also what `reloadI2pdTunnels` drives. */
+export const consolePort = 7070
+
+/** I2PControl, the health check's data source. Loopback-only, never bound. */
+export const i2pControlPort = 7650
+export const I2PCONTROL_PASSWORD = 'itoopie'
+
+/**
  * The IPv4 LXC-bridge `{ hostname, port }` for the interface on a binding of an
  * already-resolved host. `<pkg>.startos` DNS and container IPs are deprecated;
  * containers — and the OS admin UI (`start-os`/`admin`) — are reached over this

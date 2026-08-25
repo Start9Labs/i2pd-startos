@@ -27,6 +27,22 @@ To assign a hidden .b32.i2p address to any installed application, open that spec
 
 The address appears in the URL table immediately, but expect a few minutes before it is reachable over I2P — the router has to build inbound tunnels and publish the address to the network first.
 
+**Bitcoin is the exception.** It speaks I2P natively through this router's SAM bridge and derives its own `.b32.i2p` address, so adding a tunnel to its Peer interface does nothing useful and is refused. Enable I2P in Bitcoin's own **Peer Settings** instead.
+
+## Relaying for Others
+
+By default this router carries only the traffic of your own services — it relays nothing for anyone else, so running it costs you no bandwidth beyond what you use.
+
+I2P depends on volunteers who do relay, so turning it on is a real contribution. Use the **Configure Router** action, set **Transit Tunnels** to Enabled, and choose how much to give: **Share** is the percentage of the bandwidth class you are willing to hand to relayed traffic, and **Maximum Transit Tunnels** caps how many you carry at once. Every bandwidth setting here bounds relayed traffic only; none of them limits your own.
+
+## If the Router Gets Stuck
+
+A router that cannot find peers — no tunnels after twenty minutes, or a health check reporting no peers found — usually has a stale or empty view of the network.
+
+Run the **Reset Router** action. It clears what the router has cached about the network and restarts so it finds peers from scratch. It takes several minutes to integrate again. Your `.b32.i2p` addresses and the router's own identity are not touched.
+
+If it happens repeatedly, the cause is usually that this server cannot resolve DNS — the router reseeds over HTTPS by hostname. Check **System > DNS Servers**.
+
 ## Router Console
 
 Open the **I2P Router Console** from this service's Interfaces section to monitor the router: network status (OK / Firewalled), tunnel creation success rate, known routers, and active tunnels.

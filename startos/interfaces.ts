@@ -1,15 +1,16 @@
 import { i18n } from './i18n'
 import { sdk } from './sdk'
+import { samHostId, samPort, socksHostId, socksPort } from './utils'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   // I2P exposes SOCKS proxy on port 4447 (i2p network only)
   // and HTTP proxy on port 4444 (i2p network only)
   // These are not general privacy proxies like Tor's SOCKS5
 
-  const socksMulti = sdk.MultiHost.of(effects, 'socks-multi')
-  const socksOrigin = await socksMulti.bindPort(4447, {
+  const socksMulti = sdk.MultiHost.of(effects, socksHostId)
+  const socksOrigin = await socksMulti.bindPort(socksPort, {
     protocol: null,
-    preferredExternalPort: 4447,
+    preferredExternalPort: socksPort,
     addSsl: null,
     secure: { ssl: false },
   })
@@ -52,9 +53,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   // SAM is unauthenticated, so it is bound without an exported interface:
   // reachable by other services on the host bridge via
   // `sdk.host.getBridgeAddress`, never on the LAN, clearnet, or Tor.
-  await sdk.MultiHost.of(effects, 'sam-multi').bindPort(7656, {
+  await sdk.MultiHost.of(effects, samHostId).bindPort(samPort, {
     protocol: null,
-    preferredExternalPort: 7656,
+    preferredExternalPort: samPort,
     addSsl: null,
     secure: { ssl: false },
   })

@@ -39,4 +39,13 @@ The pin lives in the `Dockerfile`'s `FROM` line.
 
 1. Edit the `Dockerfile`: set `ARG I2PD_VERSION=<new apk version>` and update the `FROM alpine:edge@sha256:...` digest to the one that carries it.
 2. Update `version` and `releaseNotes` in `startos/versions/current.ts` — the latest version always lives in that file, so an in-place edit is all most bumps need. A new file is spun off only when the bump requires a migration — see [Versions](https://docs.start9.com/packaging/versions.html).
-3. Rebuild.
+3. Re-validate the log filter (below).
+4. Rebuild.
+
+## Re-validating the log filter
+
+`startos/i2pdLogFilter.ts` drops known-benign `warn` lines whose text is transcribed verbatim from i2pd field exports. An upstream bump can reword any of them, which **fails open**: a reworded line stops matching, so nothing is hidden, but the flood it was suppressing comes back.
+
+After the bump, run the router for a few hours at the default `warn` level and read the service log. If it is carrying repeating routine chatter again, capture the new wording, add or widen the family in `CHURN_FAMILIES`, and add the captured line to the `DROPPED` fixtures in `test/i2pdLogFilter.test.ts` — one real line per family, in `CHURN_FAMILIES` order. `npm run check` runs the suite.
+
+Never widen a pattern past one complete message. A pattern loose enough to match a message nobody has seen hides evidence on the day it matters.

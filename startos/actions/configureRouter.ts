@@ -1,4 +1,5 @@
 import {
+  defaultRouter,
   i2pdConfig,
   generateI2pdConf,
   generateTunnelsConf,
@@ -6,7 +7,7 @@ import {
 import { sdk } from '../sdk'
 import { i18n } from '../i18n'
 
-const { InputSpec, Value } = sdk
+const { InputSpec, Value, Variants } = sdk
 
 const inputSpec = InputSpec.of({
   floodfill: Value.toggle({
@@ -27,10 +28,42 @@ const inputSpec = InputSpec.of({
       X: i18n('Unlimited'),
     },
   }),
-  transit: Value.toggle({
+  transit: Value.union({
     name: i18n('Transit Tunnels'),
-    description: i18n('Relay traffic for other I2P users'),
-    default: true,
+    description: i18n(
+      "Relay traffic for other I2P users. While this is disabled the router carries only your own services' traffic, and the bandwidth class above costs nothing.",
+    ),
+    default: 'disabled',
+    variants: Variants.of({
+      disabled: { name: i18n('Disabled'), spec: InputSpec.of({}) },
+      enabled: {
+        name: i18n('Enabled'),
+        spec: InputSpec.of({
+          share: Value.number({
+            name: i18n('Share'),
+            description: i18n(
+              'Percentage of the bandwidth class above offered to relayed traffic.',
+            ),
+            default: 50,
+            required: true,
+            min: 1,
+            max: 100,
+            integer: true,
+            units: '%',
+          }),
+          maxTunnels: Value.number({
+            name: i18n('Maximum Transit Tunnels'),
+            description: i18n(
+              'Upper bound on how many tunnels this router will carry for others at once.',
+            ),
+            default: 2500,
+            required: true,
+            min: 2,
+            integer: true,
+          }),
+        }),
+      },
+    }),
   }),
   loglevel: Value.select({
     name: i18n('Log Level'),
@@ -94,7 +127,15 @@ export const configureRouter = sdk.Action.withInput(
     return {
       floodfill: config?.floodfill?.enabled ?? false,
       bandwidth: config?.router?.bandwidth ?? 'O',
-      transit: config?.router?.transit ?? true,
+      transit: config?.router?.transit?.enabled
+        ? {
+            selection: 'enabled' as const,
+            value: {
+              share: config.router.transit.share,
+              maxTunnels: config.router.transit.maxTunnels,
+            },
+          }
+        : { selection: 'disabled' as const, value: {} },
       loglevel: config?.router?.loglevel ?? 'warn',
       externalHost: config?.router?.externalHost ?? null,
       reseedUrl: config?.router?.reseedUrl ?? null,
@@ -121,11 +162,15 @@ export const configureRouter = sdk.Action.withInput(
       floodfill: { enabled: input.floodfill },
       router: {
         bandwidth: input.bandwidth,
-        transit: input.transit,
+        transit:
+          input.transit.selection === 'enabled'
+            ? { enabled: true, ...input.transit.value }
+            : defaultRouter.transit,
         loglevel: input.loglevel,
         externalHost: input.externalHost ?? undefined,
         reseedUrl: input.reseedUrl ?? undefined,
       },
+      resetPending: config?.resetPending ?? false,
     }
 
     await i2pdConfig.write(effects, updatedConfig)

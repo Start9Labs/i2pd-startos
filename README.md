@@ -78,7 +78,7 @@ One model, and two generated files that are not models.
 
 The model holds the router settings and a **nested map of tunnels**, keyed by package, then host, then index. That map is the package's record of every address it has issued.
 
-Router settings cover the bandwidth share, whether to relay transit traffic, whether to run as a floodfill router, the log level, and optional overrides for the external address and reseed source.
+Router settings cover the bandwidth class, whether to relay transit traffic (and if so its bandwidth share and tunnel ceiling), whether to run as a floodfill router, the log level, and optional overrides for the external address and reseed source. A `resetPending` flag also lives here, set by Reset Router and consumed at the next start.
 
 ## Dependencies
 
@@ -100,7 +100,9 @@ Five interfaces, plus one port deliberately bound **without** one.
 
 **The proxies are not general-purpose privacy proxies.** They reach `.i2p` addresses only — unlike Tor's SOCKS proxy, pointing a browser at them does not anonymize ordinary web traffic.
 
-**SAM is bound on 7656 with no interface exported**, and that is a security decision: the SAM interface is unauthenticated, so it is reachable by other services over the internal bridge and from nowhere else — never on the LAN, clearnet, or Tor.
+**SAM is bound on 7656 with no interface exported**, and that is a security decision: SAM is unauthenticated and lets a caller create server destinations, not merely proxy outbound, so it is reachable by other services over the internal bridge and from nowhere else — never on the LAN, clearnet, or Tor.
+
+**A dependent resolves it with `sdk.host.getBridgeAddress`**, importing `samHostId` and `samPort` from `i2pd-startos/startos/utils` rather than hardcoding either; `socksHostId` and `socksPort` are exported alongside them for a dependent that must dial `.b32.i2p` peers itself. Those four names are a published contract — nothing in this repo outside `interfaces.ts` references them, so renaming one breaks dependents with no signal here.
 
 **The two transport ports are exported so they can be forwarded.** Without a consistent external port mapping the router reports itself firewalled behind a symmetric NAT, and inbound tunnel delivery fails — which breaks every server tunnel this package issues. They are interfaces so the user can allow that forwarding.
 
@@ -114,17 +116,29 @@ Addresses for other services are not created here — they are requested from th
 
 ## Actions
 
-Three actions, and two of them are hidden.
+Four actions, and two of them are hidden.
 
 ### Configure Router
 
-The router's own settings: bandwidth share, transit traffic, floodfill, log level, external address, and reseed URL.
+The router's own settings: bandwidth class, transit traffic, floodfill, log level, external address, and reseed URL.
 
 - **What it changes:** the router settings in the model, and through them the generated configuration.
 - **Cost:** applies on restart.
-- **Repeat safety:** idempotent.
-- **The settings with real consequences are the network-facing ones.** Relaying transit traffic and running as a floodfill router both make this node carry other people's traffic — good for the network, and a meaningful increase in bandwidth and connections. The bandwidth share caps that.
+- **Repeat safety:** idempotent; the form is pre-filled.
+- **Transit is off by default**, so the router carries only the traffic of services on this server. Enabling it makes the node relay for other I2P users — good for the network, and a meaningful increase in bandwidth and connections — bounded by the share and the transit-tunnel ceiling that appear with it. Floodfill is the other setting that carries other people's traffic.
+- **The bandwidth class costs nothing while transit is off.** Every limit i2pd offers — the class, the share, the tunnel ceiling — caps relayed traffic alone and never this router's own, which is why `notransit` rather than a low class is what takes relaying to zero, and why the class can stay high enough for LeaseSet publication to land.
 - **The external address override is for hosts the router cannot detect correctly**, and setting it wrongly is a good way to become unreachable.
+
+### Reset Router
+
+Clears what the router has cached about the I2P network and restarts, so it selects peers from scratch.
+
+- **When to run it:** the router cannot find peers, or stays unintegrated long past the first ten minutes.
+- **What it changes:** it queues the wipe; the deletion happens at the next start, before any daemon exists — a running router holds netDb and peer profiles in memory and would write the same ones straight back.
+- **Cost:** several minutes offline while it reseeds.
+- **Repeat safety:** safe to re-run.
+- **Your addresses and the router identity are not affected.** The wipe is a deny-list of derived state — `netDb/`, `peerProfiles/`, `router.info` — so `tunnels/` and `router.keys` are never in scope.
+- **Availability: only while the service is running.**
 
 ### Add I2P Tunnel — hidden
 
@@ -133,6 +147,7 @@ The router's own settings: bandwidth share, transit traffic, floodfill, log leve
 - **What it changes:** generates a key, derives the address, records the tunnel in the model, and regenerates the tunnel configuration.
 - **It can also import an existing key**, which is how an address is moved between servers.
 - **Repeat safety:** each run without an imported key produces a **new** address.
+- **It refuses two targets.** This package's own interfaces, which are not tunnel endpoints; and Bitcoin's peer interfaces, which reach I2P through the SAM bridge and derive their own address, so a server tunnel there would deliver plain TCP that bitcoind reads as bridge-local IPv4 peers.
 
 ### Delete I2P Tunnel — hidden
 
@@ -149,17 +164,23 @@ None. This package raises no tasks, so the service is never held on a prompt and
 
 One check, on the router.
 
-| Check  | Displayed as  | Method             |
-| ------ | ------------- | ------------------ |
-| `i2pd` | "I2P Network" | The router's state |
+| Check  | Displayed as  | Method                                     |
+| ------ | ------------- | ------------------------------------------ |
+| `i2pd` | "I2P Network" | i2pd's I2PControl `RouterInfo` on loopback |
 
-It reports the router's integration with the network rather than a bound port, which is what makes the first several minutes read as loading rather than failing.
+It asks the router for `net.status`, `netdb.knownpeers` and `netdb.activepeers`, so it reports integration with the network rather than a bound port — which is what makes the first several minutes read as starting rather than failing.
 
-A router that stays unintegrated for much longer than that is usually a network-reachability problem — the transport ports not being forwarded is the common cause, and it also shows in the router console as a firewalled status.
+**It is written to distinguish "slow" from "never".** Everything reads as starting during a five-minute grace period. Past it, an empty network database means the router never reached a reseed server and will not recover on its own; a reported router error status (8 and above) is surfaced with its number; and a router that has reseeded but built no tunnels yet reports starting, because that one does resolve itself.
+
+**It fails closed.** A reply the router cannot answer properly — a JSON-RPC error object rather than a result — carries no numbers, and every comparison in the check is false against nothing, so such a reply reports starting rather than falling through to success. That matters because the check queries `RouterInfo` without authenticating, which i2pd accepts only because it never validates the token it issues (PurpleI2P/i2pd#2138); if it ever starts validating, every reply becomes an error object.
+
+The empty-network-database case is usually not an I2P fault: reseeding resolves hostnames over the container's resolver, so a server whose DNS is not answering breaks I2P alone and looks like an I2P bug. A router that reseeded but stays unintegrated is usually a reachability problem instead — the transport ports not being forwarded is the common cause, and it also shows in the router console as a firewalled status.
+
+**The router's log stream is filtered before it reaches the service log.** At `warn` a healthy router narrates its routine network weather at ~25 lines a minute, over 98% of its output and none of it actionable. `startos/i2pdLogFilter.ts` drops exactly the measured families — transport-session timeouts and handshake failures, peer-database maintenance, per-stream retry mechanics, tunnel build-and-test churn, SAM per-stream teardown, lookups for departed peers, and undecryptable garlic records. Every pattern is anchored to one complete known message, so any line the list has never seen still passes, and each start logs `i2pd log filter active: N known-weather families`. Kept on purpose because each is failure evidence: everything about reseeding, binding, clock skew and router status; `SAM: Bind`, `SAM: Accept error` and `SAM: I2P acceptor has been reset`, the router-side signature of a SAM bridge that stopped serving; and both LeaseSet-publication complaints. **The filter applies at `warn` only** — a user who selects `info` or `debug` in Configure Router is diagnosing something and gets the raw stream.
 
 ## Backups and Restore
 
-The `i2pd` volume is copied wholesale — `sdk.Backups.ofVolumes('i2pd')`. That is the router identity, the configuration, and **every tunnel key**.
+The `i2pd` volume, minus what the router rebuilds for itself. Excluded: `netDb/`, `peerProfiles/`, `addressbook/`, `tags/`, `certificates/`, `router.info`, and the pidfile — all re-derived by reseeding. What is left is the configuration, the router identity in `router.keys`, and **every tunnel key**.
 
 **This backup is the only thing standing between you and permanently losing every `.b32.i2p` address you have issued.** The addresses are derived from the keys; without a key, an address is gone and cannot be recreated, and any service that published it becomes unreachable at it forever.
 
@@ -176,6 +197,9 @@ A restored instance comes back with the same router identity and the same addres
 5. **Both transport ports need forwarding** for inbound tunnels to work, or the router reports itself firewalled.
 6. **Integration takes minutes** after every start, not seconds.
 7. **The tunnel actions are hidden**, because they belong to the plugin flow on other services' pages.
+8. **Transit relaying is off by default.** This router carries only the traffic of services on this server until Configure Router turns transit on.
+9. **Bitcoin cannot take a tunnel from here.** It reaches I2P over the SAM bridge and derives its own address; Add I2P Tunnel refuses its peer interfaces.
+10. **The router's log is filtered at `warn`**, dropping known-benign network weather. Selecting `info` or `debug` disables the filter along with raising the level.
 
 ---
 
@@ -204,9 +228,18 @@ interfaces:
   ntcp2: { type: p2p, port: 4451 } # forward for inbound tunnels
 actions:
   - configure-router
+  - reset-router # only-running; queues a netDb wipe applied at next start
   - add-i2p-tunnel # hidden; invoked via the URL plugin
   - delete-i2p-tunnel # hidden; invoked via the URL plugin
 tasks: []
 health_checks:
-  - i2pd # displayed "I2P Network"; reports network integration
+  - i2pd # displayed "I2P Network"; I2PControl RouterInfo, 5-min grace period
 ```
+
+> **For dependent packages:** SAM is an unexported binding on host `sam-multi`,
+> port 7656; the i2p-only SOCKS proxy is on `socks-multi`, port 4447. Import
+> `samHostId`/`samPort`/`socksHostId`/`socksPort` from
+> `i2pd-startos/startos/utils` rather than hardcoding either, and resolve them
+> with `sdk.host.getBridgeAddress`. Nothing in this repo outside
+> `interfaces.ts` references those names, so a rename here breaks dependents
+> silently.
