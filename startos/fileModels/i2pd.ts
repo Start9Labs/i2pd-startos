@@ -1,5 +1,12 @@
 import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
+import {
+  I2PCONTROL_PASSWORD,
+  consolePort,
+  i2pControlPort,
+  samPort,
+  socksPort,
+} from '../utils'
 
 const portInfoShape = z.object({
   target: z.string(),
@@ -15,9 +22,19 @@ export const floodfillShape = z.object({
   enabled: z.boolean().catch(false),
 })
 
+export const transitShape = z.object({
+  enabled: z.boolean().catch(false),
+  /** Percent of `bandwidth` offered to transit. */
+  share: z.number().int().min(1).max(100).catch(50),
+  /** i2pd floors `limits.transittunnels` at 2; a lower value here would not bind. */
+  maxTunnels: z.number().int().min(2).catch(2500),
+})
+
 export const routerShape = z.object({
   bandwidth: z.enum(['L', 'O', 'P', 'X']).catch('O'),
-  transit: z.boolean().catch(true),
+  // A boolean written by an earlier release fails this shape and lands on the
+  // default, leaving its sibling settings intact.
+  transit: transitShape.catch({ enabled: false, share: 50, maxTunnels: 2500 }),
   loglevel: z.enum(['none', 'error', 'warn', 'info', 'debug']).catch('warn'),
   // When set, written as `host = <value>` in i2pd.conf.  i2pd then publishes
   // this IP/hostname in RouterInfo instead of auto-detecting through peer tests.
@@ -49,10 +66,21 @@ const shape = z.object({
   }),
   router: routerShape.catch({
     bandwidth: 'O',
-    transit: true,
+    transit: { enabled: false, share: 50, maxTunnels: 2500 },
     loglevel: 'warn',
   }),
+  // Set by the Reset Router action, applied by main before any daemon exists:
+  // a running router holds netDb and peer profiles in memory and would write
+  // the same ones straight back.
+  resetPending: z.boolean().catch(false),
 })
+
+/** The router defaults, for a caller rebuilding the whole config in one write. */
+export const defaultRouter: z.infer<typeof routerShape> = {
+  bandwidth: 'O',
+  transit: { enabled: false, share: 50, maxTunnels: 2500 },
+  loglevel: 'warn',
+}
 
 export type I2pdConfig = z.infer<typeof shape>
 
@@ -97,8 +125,17 @@ export function generateI2pdConf(config: I2pdConfig): string {
   // 3 introducers, the 1800 ms LeaseSet-publication confirmation window is
   // rarely long enough for a floodfill to complete the introduction handshake,
   // causing persistent "Publish confirmation was not received" failures.
-  const bw = router.bandwidth
-  lines.push(`bandwidth = ${bw}`)
+  lines.push(`bandwidth = ${router.bandwidth}`)
+
+  // Transit is traffic relayed for other I2P users. Refused outright by
+  // default: bandwidth/share/transittunnels each cap transit and nothing else,
+  // so none of them can express "none", and the capacity class above only
+  // costs anything once transit is on.
+  if (router.transit.enabled) {
+    lines.push(`share = ${router.transit.share}`)
+  } else {
+    lines.push('notransit = true')
+  }
 
   // When an external host is configured, i2pd publishes that IP directly and
   // skips the peer-test-based NAT detection.  Without this, i2pd's peer test
@@ -130,7 +167,7 @@ export function generateI2pdConf(config: I2pdConfig): string {
   // can reach it.  Restricting to loopback would make the console unreachable
   // from the StartOS UI entirely.
   lines.push('address = 0.0.0.0')
-  lines.push('port = 7070')
+  lines.push(`port = ${consolePort}`)
   // StartOS requirement: the proxy forwards requests with its own Host header
   // (the .onion / LAN address), which differs from 127.0.0.1:7070.  i2pd's
   // strict-headers check would reject every proxied request with 403.
@@ -151,7 +188,7 @@ export function generateI2pdConf(config: I2pdConfig): string {
   lines.push('enabled = true')
   // Same StartOS requirement as [httpproxy] above.
   lines.push('address = 0.0.0.0')
-  lines.push('port = 4447')
+  lines.push(`port = ${socksPort}`)
   lines.push('')
 
   lines.push('[ssu2]')
@@ -211,13 +248,25 @@ export function generateI2pdConf(config: I2pdConfig): string {
 
   lines.push('[sam]')
   lines.push('enabled = true')
+  // 0.0.0.0 so dependent services reach SAM over the LXC bridge; interfaces.ts
+  // binds it without exporting an interface, which is what keeps it off the LAN.
   lines.push('address = 0.0.0.0')
-  lines.push('port = 7656')
+  lines.push(`port = ${samPort}`)
   lines.push('')
 
-  if (router.transit === false) {
+  // The health check's data source. Loopback-only: the token is never
+  // validated by i2pd (PurpleI2P/i2pd#2138), so nothing outside this service's
+  // own network namespace may reach it.
+  lines.push('[i2pcontrol]')
+  lines.push('enabled = true')
+  lines.push('address = 127.0.0.1')
+  lines.push(`port = ${i2pControlPort}`)
+  lines.push(`password = ${I2PCONTROL_PASSWORD}`)
+  lines.push('')
+
+  if (router.transit.enabled) {
     lines.push('[limits]')
-    lines.push('transittunnels = 0')
+    lines.push(`transittunnels = ${router.transit.maxTunnels}`)
     lines.push('')
   }
 
