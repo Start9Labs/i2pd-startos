@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.png" alt="I2Pd Logo" width="21%">
+  <img src="icon.svg" alt="I2Pd Logo" width="21%">
 </p>
 
 # I2Pd on StartOS
