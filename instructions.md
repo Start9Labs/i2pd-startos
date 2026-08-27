@@ -27,7 +27,7 @@ To assign a hidden .b32.i2p address to any installed application, open that spec
 
 The address appears in the URL table immediately, but expect a few minutes before it is reachable over I2P — the router has to build inbound tunnels and publish the address to the network first.
 
-**Bitcoin is the exception.** It speaks I2P natively through this router's SAM bridge and derives its own `.b32.i2p` address, so adding a tunnel to its Peer interface does nothing useful and is refused. Enable I2P in Bitcoin's own **Peer Settings** instead.
+**Bitcoin is the exception.** It runs its own I2P router and derives its own `.b32.i2p` address from a key it keeps, so adding a tunnel to its Peer interface does nothing and is refused. Enable I2P in Bitcoin's own **Peer Settings** instead.
 
 ## Relaying for Others
 
