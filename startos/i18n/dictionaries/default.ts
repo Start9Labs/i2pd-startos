@@ -54,7 +54,6 @@ const dict = {
   'Private Key (.dat file, base64), optional': 73,
   'Paste the base64-encoded contents of an existing i2pd .dat key file to reuse a known .b32.i2p address. Leave blank to auto-generate a new address. Only EdDSA-SHA512-ED25519 + ElGamal keys (679 bytes) are supported.': 74,
   'Must be a valid base64 string': 75,
-  "Bitcoin reaches I2P through the SAM bridge, not a server tunnel, and generates its own .b32.i2p address. Enable it under Bitcoin's Peer Settings instead.": 76,
   "Relay traffic for other I2P users. While this is disabled the router carries only your own services' traffic, and the bandwidth class above costs nothing.": 77,
   Disabled: 78,
   Enabled: 79,

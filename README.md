@@ -147,7 +147,7 @@ Clears what the router has cached about the I2P network and restarts, so it sele
 - **What it changes:** generates a key, derives the address, records the tunnel in the model, and regenerates the tunnel configuration.
 - **It can also import an existing key**, which is how an address is moved between servers.
 - **Repeat safety:** each run without an imported key produces a **new** address.
-- **It refuses two targets.** This package's own interfaces, which are not tunnel endpoints; and Bitcoin's peer interfaces. Bitcoin advertises an address only to peers reached on that address's own network, and reaches I2P peers only through a SAM session holding a destination it owns — so a tunnel address here would land in its configuration and be gossiped to nobody. Tor differs because Bitcoin has an onion proxy, and therefore has onion peers to advertise to.
+- **It refuses one target:** this package's own interfaces, which are not tunnel endpoints.
 
 ### Delete I2P Tunnel — hidden
 
@@ -200,8 +200,7 @@ A restored instance comes back with the same router identity and the same addres
 6. **Integration takes minutes** after every start, not seconds.
 7. **The tunnel actions are hidden**, because they belong to the plugin flow on other services' pages.
 8. **Transit relaying is off by default.** This router carries only the traffic of services on this server until Configure Router turns transit on.
-9. **Bitcoin cannot take a tunnel from here.** It runs its own I2P router and owns the destination it advertises; Add I2P Tunnel refuses its peer interfaces.
-10. **The router's log is filtered at `warn`**, dropping known-benign network weather. Selecting `info` or `debug` disables the filter along with raising the level.
+9. **The router's log is filtered at `warn`**, dropping known-benign network weather. Selecting `info` or `debug` disables the filter along with raising the level.
 
 ---
 
