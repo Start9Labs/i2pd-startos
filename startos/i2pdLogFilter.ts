@@ -16,10 +16,10 @@ import { StringDecoder } from 'node:string_decoder'
  * reaches the log — the failure-day signals are preserved by construction, not
  * by enumeration.
  *
- * The families are transcribed verbatim from i2pd 2.58.0 field exports. An
- * upstream bump can reword them, which fails open: a reworded line no longer
- * matches and the flood returns — see UPDATING.md for the re-validation step
- * that belongs to an i2pd bump.
+ * The families are transcribed from i2pd field exports and re-validated
+ * against the pinned i2pd's own log literals — see UPDATING.md. An upstream
+ * bump can reword one, which fails open: a reworded line no longer matches and
+ * the flood it was suppressing returns.
  *
  * Only applied at `warn`. A user who selects `info` or `debug` in Configure
  * Router is diagnosing something and gets the raw stream.
@@ -27,7 +27,7 @@ import { StringDecoder } from 'node:string_decoder'
 
 // One entry per observed weather family. Anchor to the full message: a
 // pattern that could also match an unseen message hides evidence.
-const CHURN_FAMILIES: RegExp[] = [
+export const CHURN_FAMILIES: RegExp[] = [
   // Transport-session establishment weather: most I2P routers are
   // residential, firewalled, or gone; failed attempts are the normal case.
   /^Transports: Session to peer \S+ has not been created in \d+ seconds$/,
@@ -111,10 +111,15 @@ const ANSI_SGR = /\x1b\[[0-9;]*m/g
 // the filter fails open to "keep everything" rather than guessing.
 const MESSAGE = /^(?:\S+ )?\d{2}:\d{2}:\d{2}(?:[.,]\d+)?@\w+\/\w+ - (.*)$/
 
-export const isI2pdChurn = (line: string): boolean => {
+/** The family that classifies `line` as weather, or `undefined` if it is evidence. */
+export const churnFamilyOf = (line: string): RegExp | undefined => {
   const message = MESSAGE.exec(line.replace(ANSI_SGR, ''))?.[1] ?? line
-  return CHURN_FAMILIES.some((family) => family.test(message))
+  // i2pd leaves the trailing space where a value it did not append would go.
+  return CHURN_FAMILIES.find((family) => family.test(message.trimEnd()))
 }
+
+export const isI2pdChurn = (line: string): boolean =>
+  churnFamilyOf(line) !== undefined
 
 // A partial line that sits unfinished this long means the stream stalled
 // or the daemon died mid-write: flush it as evidence. It also empties the

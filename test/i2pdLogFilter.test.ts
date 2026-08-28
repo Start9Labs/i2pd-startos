@@ -1,17 +1,23 @@
 // Run with: npm test  (node --experimental-strip-types --test test/)
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { i2pdLogFilter, isI2pdChurn } from '../startos/i2pdLogFilter.ts'
+import {
+  CHURN_FAMILIES,
+  churnFamilyOf,
+  i2pdLogFilter,
+  isI2pdChurn,
+} from '../startos/i2pdLogFilter.ts'
 
 // At least one real line per drop family, in CHURN_FAMILIES order, taken
-// verbatim from two i2pd 2.58.0 field exports (identifiers included — they
-// are public router hashes).
+// verbatim from i2pd field exports (identifiers included — they are public
+// router hashes). Three carry the trailing space i2pd emits where a value
+// would go; the coverage test below is what keeps this list complete.
 const DROPPED = [
   '12:44:05@235/warn - Transports: Session to peer ScbqgA4rDJDYsALzrkV~e7ztFYWD-v6Nyyknjoh15WE= has not been created in 15 seconds',
   '10:44:07@224/warn - NTCP2: SessionCreated read error: End of file',
   '16:46:24@224/warn - NTCP2: SessionCreated read error: Connection reset by peer',
   '10:57:00@224/warn - NTCP2: Receive length read error: Connection reset by peer',
-  '11:02:00@224/warn - NTCP2: SessionCreated AEAD verification failed',
+  '11:02:00@224/warn - NTCP2: SessionCreated AEAD verification failed ',
   '10:44:07@802/warn - SSU2: Retry token is zero',
   '11:34:41@939/warn - SSU2: Unexpected message type 208 from 35.202.131.136:23625 of 98 bytes',
   '11:35:00@939/warn - SSU2: Unexpected message type 29 instead 25',
@@ -23,7 +29,7 @@ const DROPPED = [
   '12:07:00@939/warn - SSU2: Incorrect data size for path response 8',
   '12:08:00@939/warn - SSU2: Unexpected PeerTest message SourceConnID=123 DestConnID=456',
   '12:09:00@939/warn - SSU2: RelayIntro unknown router to introduce',
-  '12:10:00@939/warn - SSU2: TokenRequest AEAD verification failed',
+  '12:10:00@939/warn - SSU2: TokenRequest AEAD verification failed ',
   '12:11:00@939/warn - SSU2: SessionRequest message too short 47',
   '12:11:10@939/warn - SSU2: SessionCreated message too short 47',
   '12:12:00@939/warn - SSU2: SessionCreated AEAD verification failed',
@@ -63,7 +69,7 @@ const DROPPED = [
   '11:46:00@100/warn - LeaseSet: Lease is expired already',
   '10:57:16@96/error - Garlic: Missing symmetric key for index 0',
   "10:58:00@96/error - Garlic: Can't handle ECIES-X25519-AEAD-Ratchet message",
-  '10:58:10@96/error - Garlic: Flags/static section AEAD verification failed',
+  '10:58:10@96/error - Garlic: Flags/static section AEAD verification failed ',
   '10:58:15@96/warn - Garlic: Payload for router AEAD verification failed',
   '10:58:05@96/warn - Garlic: Payload section AEAD decryption failed',
   '10:58:20@96/error - Garlic: Incoming sessions come too often',
@@ -100,6 +106,16 @@ test('drops every known weather family', () => {
   for (const line of DROPPED) {
     assert.equal(isI2pdChurn(line), true, `should drop: ${line}`)
   }
+})
+
+test('every drop family has a fixture', () => {
+  const covered = new Set(DROPPED.map(churnFamilyOf))
+  const uncovered = CHURN_FAMILIES.filter((f) => !covered.has(f))
+  assert.deepEqual(
+    uncovered.map(String),
+    [],
+    'add one real line per family to DROPPED',
+  )
 })
 
 test('keeps failure evidence and anything unknown', () => {
