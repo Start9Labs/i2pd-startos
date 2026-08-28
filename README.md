@@ -37,10 +37,11 @@
 
 One image, built here.
 
-| Property      | Value                               |
-| ------------- | ----------------------------------- |
-| Image         | Built from this repo's `Dockerfile` |
-| Architectures | x86_64, aarch64, riscv64            |
+| Property      | Value                                                      |
+| ------------- | ---------------------------------------------------------- |
+| Image         | Built from this repo's `Dockerfile`                        |
+| Architectures | x86_64, aarch64, riscv64                                   |
+| Entrypoint    | Overridden — the router is launched against the volume's `i2pd.conf` and data directory, not the image's defaults |
 
 | Subcontainer | Purpose                                                         |
 | ------------ | --------------------------------------------------------------- |
@@ -48,19 +49,25 @@ One image, built here.
 
 **This package declares the `url-v0` plugin**, which is what lets it hand addresses to other services. That is the significant thing about it: most packages are only reachable, while this one makes other packages reachable.
 
+**The router's log stream is filtered before it reaches the service log.** At `warn` a healthy router narrates its routine network weather at ~25 lines a minute, over 98% of its output and none of it actionable. `startos/i2pdLogFilter.ts` drops exactly the measured families — transport-session timeouts and handshake failures, peer-database maintenance, per-stream retry mechanics, tunnel build-and-test churn, SAM per-stream teardown, lookups for departed peers, and undecryptable garlic records. Every pattern is anchored to one complete known message, so any line the list has never seen still passes, and each start logs `i2pd log filter active: N known-weather families`. Kept on purpose because each is failure evidence: everything about reseeding, binding, clock skew and router status; `SAM: Bind`, `SAM: Accept error` and `SAM: I2P acceptor has been reset`, the router-side signature of a SAM bridge that stopped serving; and both LeaseSet-publication complaints. **The filter applies at `warn` only** — a user who selects `info` or `debug` in Configure Router is diagnosing something and gets the raw stream.
+
 ## Volume and Data Layout
 
 One volume, holding the router's identity and every tunnel's keys.
 
-| Volume | Mount Point | Purpose                                            |
-| ------ | ----------- | -------------------------------------------------- |
-| `i2pd` | —           | Router identity, generated config, and tunnel keys |
+| Volume | Mount Point     | Purpose                                            |
+| ------ | --------------- | -------------------------------------------------- |
+| `i2pd` | `/var/lib/i2pd` | Router identity, generated config, and tunnel keys |
 
-| Path                     | Written by  | Holds                              |
-| ------------------------ | ----------- | ---------------------------------- |
-| `etc/i2pd/i2pd.conf`     | The package | The generated router configuration |
-| `etc/i2pd/tunnels.conf`  | The package | The generated tunnel definitions   |
-| One directory per tunnel | The package | That tunnel's key file             |
+Paths below are relative to the volume root, so `etc/i2pd/i2pd.conf` is
+`/var/lib/i2pd/etc/i2pd/i2pd.conf` inside the container.
+
+| Path                               | Written by  | Holds                                     |
+| ---------------------------------- | ----------- | ----------------------------------------- |
+| `config.json`                      | The package | The file model — see [File Models](#file-models) |
+| `etc/i2pd/i2pd.conf`               | The package | The generated router configuration        |
+| `etc/i2pd/tunnels.conf`            | The package | The generated tunnel definitions          |
+| `tunnels/<pkg>/<host>/tunnel_<n>/` | The package | One tunnel's `.dat` key and its `hostname` |
 
 **Each tunnel's key file is what owns its address.** A `.b32.i2p` address is derived from the key, so losing the key loses the address permanently — there is no way to reissue the same one. This is the single most consequential fact about the package, and it drives everything under [Backups and Restore](#backups-and-restore).
 
@@ -123,8 +130,9 @@ Four actions, and two of them are hidden.
 The router's own settings: bandwidth class, transit traffic, floodfill, log level, external address, and reseed URL.
 
 - **What it changes:** the router settings in the model, and through them the generated configuration.
-- **Cost:** applies on restart.
+- **Cost:** saving restarts the router, so the service is briefly interrupted and needs several minutes to re-integrate.
 - **Repeat safety:** idempotent; the form is pre-filled.
+- **Floodfill is rejected with the Low bandwidth class**, and nothing is saved when it is — raise the class first, then re-run.
 - **Transit is off by default**, so the router carries only the traffic of services on this server. Enabling it makes the node relay for other I2P users — good for the network, and a meaningful increase in bandwidth and connections — bounded by the share and the transit-tunnel ceiling that appear with it. Floodfill is the other setting that carries other people's traffic.
 - **The bandwidth class costs nothing while transit is off.** Every limit i2pd offers — the class, the share, the tunnel ceiling — caps relayed traffic alone and never this router's own, which is why `notransit` rather than a low class is what takes relaying to zero, and why the class can stay high enough for LeaseSet publication to land.
 - **The external address override is for hosts the router cannot detect correctly**, and setting it wrongly is a good way to become unreachable.
@@ -138,7 +146,6 @@ Clears what the router has cached about the I2P network and restarts, so it sele
 - **Cost:** several minutes offline while it reseeds.
 - **Repeat safety:** safe to re-run.
 - **Your addresses and the router identity are not affected.** The wipe is a deny-list — `netDb/` and `peerProfiles/` — so `tunnels/`, `router.keys` and `router.info` are never in scope.
-- **Availability: only while the service is running.**
 
 ### Add I2P Tunnel — hidden
 
@@ -147,14 +154,14 @@ Clears what the router has cached about the I2P network and restarts, so it sele
 - **What it changes:** generates a key, derives the address, records the tunnel in the model, and regenerates the tunnel configuration.
 - **It can also import an existing key**, which is how an address is moved between servers.
 - **Repeat safety:** each run without an imported key produces a **new** address.
-- **It refuses one target:** this package's own interfaces, which are not tunnel endpoints.
+- **It refuses five cases**, each with its own error: this package's own interfaces, which are not tunnel endpoints; a binding that is not exposed; a binding with no bridge-reachable address to forward to; a plaintext tunnel over a binding that terminates its own TLS, which needs an SSL tunnel instead; and a second binding of the same port and SSL setting on an address that already has one.
 
 ### Delete I2P Tunnel — hidden
 
 The counterpart, also invoked through the plugin.
 
-- **What it changes:** removes the tunnel and **deletes its key**.
-- **This is irreversible.** The address cannot be reissued without the key it was derived from.
+- **What it changes:** removes one port binding from the address. The tunnel directory and **its key** are deleted only when that was the address's last binding — an address serving both an SSL and a plaintext port keeps its key until both are gone.
+- **Deleting the last binding is irreversible.** The address cannot be reissued without the key it was derived from.
 
 ## Tasks
 
@@ -175,8 +182,6 @@ It asks the router for `net.status`, `netdb.knownpeers` and `netdb.activepeers`,
 **It fails closed.** A reply the router cannot answer properly — a JSON-RPC error object rather than a result — carries no numbers, and every comparison in the check is false against nothing, so such a reply reports starting rather than falling through to success. That matters because the check queries `RouterInfo` without authenticating, which i2pd accepts only because it never validates the token it issues (PurpleI2P/i2pd#2138); if it ever starts validating, every reply becomes an error object.
 
 The empty-network-database case is usually not an I2P fault: reseeding resolves hostnames over the container's resolver, so a server whose DNS is not answering breaks I2P alone and looks like an I2P bug. A router that reseeded but stays unintegrated is usually a reachability problem instead — the transport ports not being forwarded is the common cause, and it also shows in the router console as a firewalled status.
-
-**The router's log stream is filtered before it reaches the service log.** At `warn` a healthy router narrates its routine network weather at ~25 lines a minute, over 98% of its output and none of it actionable. `startos/i2pdLogFilter.ts` drops exactly the measured families — transport-session timeouts and handshake failures, peer-database maintenance, per-stream retry mechanics, tunnel build-and-test churn, SAM per-stream teardown, lookups for departed peers, and undecryptable garlic records. Every pattern is anchored to one complete known message, so any line the list has never seen still passes, and each start logs `i2pd log filter active: N known-weather families`. Kept on purpose because each is failure evidence: everything about reseeding, binding, clock skew and router status; `SAM: Bind`, `SAM: Accept error` and `SAM: I2P acceptor has been reset`, the router-side signature of a SAM bridge that stopped serving; and both LeaseSet-publication complaints. **The filter applies at `warn` only** — a user who selects `info` or `debug` in Configure Router is diagnosing something and gets the raw stream.
 
 ## Backups and Restore
 
@@ -216,7 +221,7 @@ architectures:
 subcontainers:
   - i2pd-sub
 volumes:
-  i2pd: router identity, generated config, and one directory of keys per tunnel
+  i2pd: /var/lib/i2pd
 file_models:
   - config.json # i2pd.conf and tunnels.conf are generated from it, not modelled
 startos_managed_env_vars: []
@@ -236,11 +241,3 @@ tasks: []
 health_checks:
   - i2pd # displayed "I2P Network"; I2PControl RouterInfo, 5-min grace period
 ```
-
-> **For dependent packages:** SAM is an unexported binding on host `sam-multi`,
-> port 7656; the i2p-only SOCKS proxy is on `socks-multi`, port 4447. Import
-> `samHostId`/`samPort`/`socksHostId`/`socksPort` from
-> `i2pd-startos/startos/utils` rather than hardcoding either, and resolve them
-> with `sdk.host.getBridgeAddress`. Nothing in this repo outside
-> `interfaces.ts` references those names, so a rename here breaks dependents
-> silently.

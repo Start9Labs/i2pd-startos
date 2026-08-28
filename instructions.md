@@ -1,4 +1,4 @@
-# I2P Instructions
+# I2Pd
 
 ## Documentation
 
@@ -6,7 +6,7 @@
 
 ## Getting Started
 
-I2P starts immediately upon launch. The first 3 to 10 minutes are spent finding peers and integrating into the network. The status card will show a "loading" message during this initialization period, which is completely normal.
+I2P starts as soon as you launch it, but it is not usable straight away: the first 3 to 10 minutes are spent finding peers and joining the network. The **I2P Network** health check reports that progress and turns green once the router is integrated. The wait is normal, not a fault.
 
 ## Warnings
 
@@ -23,9 +23,11 @@ Please note that these proxies only work for routing traffic to internal .i2p an
 
 ## Hosting Services on I2P
 
-To assign a hidden .b32.i2p address to any installed application, open that specific service, navigate to the Interfaces section, and add a new I2P address from the URL table to make it accessible within the network. When adding one you can paste the base64-encoded contents of an existing i2pd `.dat` key file to reuse a known address, or leave it blank to generate a fresh one.
+To give any installed application a `.b32.i2p` address, open that service, go to its **Interfaces** tab, and find the **I2Pd** section under the interface you want to publish. Click **Add I2P Tunnel** there. You can paste the base64-encoded contents of an existing i2pd `.dat` key file to reuse an address you already own, or leave it blank to generate a fresh one.
 
-The address appears in the URL table immediately, but expect a few minutes before it is reachable over I2P — the router has to build inbound tunnels and publish the address to the network first.
+Two things will stop an address being created. If the interface serves HTTPS only, leave **SSL** switched on — a plaintext tunnel would have nothing to forward to. And if the interface is not exposed at all, enable it first, for the same reason.
+
+The address joins the interface's other addresses immediately, but expect a few minutes before it is reachable over I2P — the router has to build inbound tunnels and publish the address to the network first.
 
 ## Relaying for Others
 
@@ -57,8 +59,6 @@ For significantly better performance and to be classified as a directly-reachabl
    - **UDP port 4450** → StartOS IP (e.g., 10.0.0.6):4450 for SSU2 transport
    - **TCP port 4451** → StartOS IP (e.g., 10.0.0.6):4451 for NTCP2 transport
 
-2. **In StartOS I2P service**, use the **Configure Router** action to:
-   - Set your external IP address or hostname in **External IP / Hostname** field
-   - This enables the router to advertise its reachability to peers
+2. Run the **Configure Router** action and put your external IP address or hostname in the **External IP / Hostname** field, so the router advertises a reachable address to its peers.
 
-Once port forwarding is confirmed, restart the I2P service and wait 5–10 minutes for the router to stabilize. It should transition from "Firewalled" to "OK" status.
+Saving restarts the router. Give it 5–10 minutes to settle; the router console should move from "Firewalled" to "OK".
