@@ -71,6 +71,11 @@ const dict = {
   'The I2P router reported error status ${status}': 91,
   'Building the network database': 92,
   'Integrated with the I2P network (${peers} active peers)': 93,
+  'Invalid key file: expected 679 bytes, got ${size}. Paste the full base64-encoded .dat file (no line breaks needed).': 94,
+  'Unsupported key type: certType=${certType}, sigType=${sigType}, encType=${encType}. Only EdDSA-SHA512-ED25519 (sigType=7) + ElGamal (encType=0) is supported.': 95,
+  'Cannot create a non-SSL I2P tunnel for ${package}: its interface is SSL-only. Create an SSL I2P tunnel instead.': 96,
+  'Cannot create an I2P tunnel for ${package}: interface binding ${port} is not exposed, so there is no reachable endpoint to forward to.': 97,
+  'Cannot create an I2P tunnel for ${package}: interface binding ${port} has no bridge-reachable address to forward to.': 98,
 } as const
 
 export type I18nKey = keyof typeof dict

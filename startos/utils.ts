@@ -1,5 +1,6 @@
 import { createHash, createDiffieHellmanGroup } from 'crypto'
 import { T, utils } from '@start9labs/start-sdk'
+import { i18n } from './i18n'
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { base32 } from 'rfc4648'
 import { sdk } from './sdk'
@@ -135,8 +136,10 @@ export function parseI2pKey(base64Key: string | null): {
   const keyfile = Buffer.from(base64Key.replace(/\s+/g, ''), 'base64')
   if (keyfile.length !== 679) {
     throw new Error(
-      `Invalid key file: expected 679 bytes, got ${keyfile.length}. ` +
-        `Paste the full base64-encoded .dat file (no line breaks needed).`,
+      i18n(
+        'Invalid key file: expected 679 bytes, got ${size}. Paste the full base64-encoded .dat file (no line breaks needed).',
+        { size: String(keyfile.length) },
+      ),
     )
   }
 
@@ -146,9 +149,14 @@ export function parseI2pKey(base64Key: string | null): {
   const encType = destination.readUInt16BE(389)
   if (certType !== 0x05 || sigType !== 7 || encType !== 0) {
     throw new Error(
-      `Unsupported key type: certType=0x${certType.toString(16)}, ` +
-        `sigType=${sigType}, encType=${encType}. ` +
-        `Only EdDSA-SHA512-ED25519 (sigType=7) + ElGamal (encType=0) is supported.`,
+      i18n(
+        'Unsupported key type: certType=${certType}, sigType=${sigType}, encType=${encType}. Only EdDSA-SHA512-ED25519 (sigType=7) + ElGamal (encType=0) is supported.',
+        {
+          certType: `0x${certType.toString(16)}`,
+          sigType: String(sigType),
+          encType: String(encType),
+        },
+      ),
     )
   }
 
@@ -158,38 +166,23 @@ export function parseI2pKey(base64Key: string | null): {
   return { keyfile, hostname }
 }
 
-/**
- * Signal i2pd to reload tunnels.conf without a full restart.
- *
- * i2pd does NOT watch tunnels.conf for changes automatically — the reload must
- * be triggered explicitly after the file is written.  The WebConsole requires a
- * session token (embedded in every page), so we fetch it first and then issue
- * the reload command.
- *
- * The HTTP calls run via wget inside a temp subcontainer, NOT from this JS
- * process: actions and init run in the procedure context, whose network
- * namespace cannot reach the i2pd subcontainer — neither on 127.0.0.1 nor via
- * the i2p.startos bridge address. Subcontainers of the same package share a
- * network namespace, so loopback works from there.
- *
- * Best-effort: failures are logged, not thrown — the call naturally fails
- * while i2pd is stopped (the regenerated conf is then picked up on next start).
- */
-/**
- * Reload script run inside a temp subcontainer (which shares the package
- * network namespace, so 127.0.0.1 reaches the running i2pd — the procedure
- * context itself cannot). The conf pre-read through this fresh volume mount
- * nudges the daemon's view of the just-written files; on platforms where the
- * cross-context file view lags (observed on a StartOS VM), the reload's
- * effect can trail by up to a couple of minutes, which I2P tunnel
- * establishment latency subsumes anyway.
- */
+// The console issues a session token on every page, so it has to be read
+// before the reload command will be accepted.
 const RELOAD_SCRIPT = `
 cat /var/lib/i2pd/etc/i2pd/tunnels.conf /var/lib/i2pd/etc/i2pd/i2pd.conf > /dev/null 2>&1
 TOKEN=$(wget -q -T 5 -O - 'http://127.0.0.1:7070/?page=commands' | grep -o 'token=[0-9]*' | head -1 | cut -d= -f2)
 [ -n "$TOKEN" ] && wget -q -T 5 -O /dev/null "http://127.0.0.1:7070/?cmd=reload_tunnels_config&token=$TOKEN"
 `
 
+/**
+ * Reload tunnels.conf without restarting the router. i2pd does not watch the
+ * file, so this must follow every write to it.
+ *
+ * Runs in a temp subcontainer because subcontainers of a package share a
+ * network namespace and the procedure context does not, so 127.0.0.1 reaches
+ * the router only from there. Best-effort: while i2pd is stopped the call
+ * fails and the next start picks the conf up anyway.
+ */
 export async function reloadI2pdTunnels(effects: T.Effects): Promise<void> {
   try {
     await sdk.SubContainer.withTemp(

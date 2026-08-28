@@ -168,7 +168,16 @@ export const addI2pTunnel = sdk.Action.withInput(
       { target: string; ssl: boolean; internalPort: number }
     > = {}
 
-    if (input.ssl && binding?.options.addSsl) {
+    if (!binding?.enabled) {
+      throw new Error(
+        i18n(
+          'Cannot create an I2P tunnel for ${package}: interface binding ${port} is not exposed, so there is no reachable endpoint to forward to.',
+          { package: packageId, port: String(internalPort) },
+        ),
+      )
+    }
+
+    if (input.ssl && binding.options.addSsl) {
       const addr = bridgeHost(host, internalPort, true)
       if (addr) {
         newPorts[String(binding.options.addSsl.preferredExternalPort)] = {
@@ -178,27 +187,36 @@ export const addI2pTunnel = sdk.Action.withInput(
         }
       }
     } else {
-      if (binding?.enabled) {
-        // A binding that terminates its own TLS (native `secure.ssl`) has no
-        // plaintext endpoint, so a non-SSL tunnel can't honestly serve it.
-        if (binding.options.secure?.ssl === true) {
-          throw new Error(
-            `Cannot create a non-SSL I2P tunnel for "${packageId}": its interface is SSL-only. Create an SSL I2P tunnel instead.`,
-          )
-        }
-        const addr = bridgeHost(host, internalPort, false)
-        if (addr) {
-          newPorts[String(binding.options.preferredExternalPort)] = {
-            target: `${addr.hostname}:${addr.port}`,
-            ssl: false,
-            internalPort,
-          }
-        }
-      } else {
+      // A binding that terminates its own TLS (native `secure.ssl`) has no
+      // plaintext endpoint, so a non-SSL tunnel can't honestly serve it.
+      if (binding.options.secure?.ssl === true) {
         throw new Error(
-          `Cannot create an I2P tunnel for "${packageId}": interface binding ${internalPort} is not exposed, so there is no reachable endpoint to forward to.`,
+          i18n(
+            'Cannot create a non-SSL I2P tunnel for ${package}: its interface is SSL-only. Create an SSL I2P tunnel instead.',
+            { package: packageId },
+          ),
         )
       }
+      const addr = bridgeHost(host, internalPort, false)
+      if (addr) {
+        newPorts[String(binding.options.preferredExternalPort)] = {
+          target: `${addr.hostname}:${addr.port}`,
+          ssl: false,
+          internalPort,
+        }
+      }
+    }
+
+    // Without a target the tunnel would be written with no ports: the key is
+    // generated and the address recorded, but `generateTunnelsConf` skips a
+    // portless entry and nothing ever serves it.
+    if (Object.keys(newPorts).length === 0) {
+      throw new Error(
+        i18n(
+          'Cannot create an I2P tunnel for ${package}: interface binding ${port} has no bridge-reachable address to forward to.',
+          { package: packageId, port: String(internalPort) },
+        ),
+      )
     }
 
     // Load current config
