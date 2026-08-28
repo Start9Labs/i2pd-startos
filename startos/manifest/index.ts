@@ -5,7 +5,7 @@ export const manifest = setupManifest({
   id: 'i2pd',
   title: 'I2Pd',
   license: 'BSD-3-Clause',
-  packageRepo: 'https://github.com/Start9-Community/i2pd-startos',
+  packageRepo: 'https://github.com/Start9Labs/i2pd-startos',
   upstreamRepo: 'https://github.com/PurpleI2P/i2pd',
   marketingUrl: 'https://i2pd.website/',
   donationUrl: 'https://i2pd.website/en/donate',

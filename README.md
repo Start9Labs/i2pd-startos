@@ -12,7 +12,7 @@
 [i2pd](https://github.com/PurpleI2P/i2pd) is a C++ router for the I2P network. On StartOS it does two jobs: it lets you reach I2P sites through a proxy, and — through the URL plugin — it gives **any other installed service** a `.b32.i2p` address, the same way the Tor package gives them onion addresses.
 
 - **Upstream repo:** <https://github.com/PurpleI2P/i2pd>
-- **Wrapper repo:** <https://github.com/Start9-Community/i2pd-startos>
+- **Wrapper repo:** <https://github.com/Start9Labs/i2pd-startos>
 
 ---
 
