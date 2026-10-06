@@ -43,7 +43,9 @@ const inputSpec = InputSpec.of({
   }>(),
   ssl: Value.toggle({
     name: i18n('SSL'),
-    description: i18n('Serve this address with SSL'),
+    description: i18n(
+      'On, the I2P address serves this interface over SSL; off, without it. An interface that serves SSL only needs this on.',
+    ),
     default: false,
   }),
 }).add(({ Value }) => ({
@@ -96,6 +98,9 @@ const inputSpec = InputSpec.of({
 
     return {
       name: i18n('Address'),
+      description: i18n(
+        'Create new address issues a new .b32.i2p address. Any other choice is an address this interface already has with the other SSL setting, and adds this setting to it.',
+      ),
       default: 'new',
       disabled: false,
       variants: Variants.of(variants),

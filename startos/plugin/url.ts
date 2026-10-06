@@ -51,16 +51,11 @@ export const exportUrls = sdk.plugin.url.setupExportedUrls(
             },
           )
         }
-        // Set to undefined (not delete) so merge() removes the key from the file
-        ;(cleaned[packageId] as any)[hostId] = undefined
+        delete hosts[hostId]
         removed.push(`${packageId}/${hostId}`)
       }
 
-      if (
-        Object.values(cleaned[packageId] || {}).every((v) => v === undefined)
-      ) {
-        ;(cleaned as any)[packageId] = undefined
-      }
+      if (Object.keys(hosts).length === 0) delete cleaned[packageId]
     }
 
     // Persist the cleaned config if we dropped any stale entries. We must NOT
@@ -73,13 +68,14 @@ export const exportUrls = sdk.plugin.url.setupExportedUrls(
     // entries.
     if (removed.length) {
       console.info(`Removed stale I2P tunnel entries: ${removed.join(', ')}`)
-      await i2pdConfig.merge(
+      // merge() cannot remove a record entry; replace the map whole.
+      await i2pdConfig.update(
         effects,
-        { i2pServices: cleaned },
+        (config) => config && { ...config, i2pServices: cleaned },
         { allowWriteAfterConst: true },
       )
       // Unlike Tor (where the file model IS the daemon's config file), i2pd
-      // reads generated conf files — re-emit them from the merged config and
+      // reads generated conf files — re-emit them from the updated config and
       // hot-reload the running router so it actually drops the stale tunnels.
       const updated = await i2pdConfig.read().once()
       if (updated) {

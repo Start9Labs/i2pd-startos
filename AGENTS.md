@@ -18,20 +18,23 @@ Freshly scaffolded? Work the
 guide page, not a file in this repo — read it, don't copy it in.
 
 Keep `README.md` (technical reference for an AI support or administering agent) and
-`instructions.md` (end-user docs) in sync with your changes.
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
 
-**Bugs and feature requests are GitHub issues on this repo** — file them as you find them.
+**Fix a defect you spot rather than reporting it** — you have the package open and the
+context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
+make: you can't pin the cause down, two defensible fixes exist, or it's too large to ride on
+the work in hand. An open issue is a report, not a queue — implement one when you're asked
+to or when it's labelled `Approved`, then close it with `Closes #<n>`.
+
 Don't record work in the repo instead: no `TODO.md`, no `NOTES.md`, no `PLAN.md`. What you
 verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **Never delete a tunnel key without meaning to.** A `.b32.i2p` address is `base32(SHA256(destination))` of the key material, so a lost key is a permanently lost address. The plugin's cleanup prunes **only** on a confirmed-gone host — `sdk.host.get` returning `null`. A _thrown_ lookup keeps the entry and its key, because an unresolvable legacy entry is not evidence the host is gone.
-- **`i2pd.conf` and `tunnels.conf` are generated, and re-emitted on every init.** That is what lets a package upgrade ship generator changes; don't turn either into a file model, and don't expect a hand edit to survive.
-- **SAM is bound with no exported interface, deliberately.** It is unauthenticated, so it must stay reachable over the bridge only — never on LAN, clearnet or Tor.
-- **The SSU2 and NTCP2 ports are exported so they can be forwarded.** Without a consistent external mapping i2pd reports "Firewalled - Symmetric NAT" and inbound tunnel delivery fails, which breaks every server tunnel this package issues.
-- **The tunnel actions are `visibility: 'hidden'` on purpose.** They are the URL plugin's table action, reached from another service's interface settings; surfacing them here would invite creating orphan tunnels.
-- **`samHostId`, `samPort`, `socksHostId` and `socksPort` in `startos/utils.ts` are a published contract.** Dependent packages import them by that module path; nothing else in this repo does, so renaming one — including tidying the `-multi` off a host id — breaks dependents with no signal here, and `MultiHost.retire()` (the way to release the stranded port) is not in the pinned SDK.
-- **The health check must stay in `main`.** It reaches the daemon's I2PControl port on `127.0.0.1`, which only the main procedure can do; init and actions run in a context that cannot, which is why `reloadI2pdTunnels` shells into a temp subcontainer instead.
-- **Transit off is policy, not tuning.** Every bandwidth limit i2pd offers caps relayed traffic alone, so `notransit` is the only lever that reaches zero — don't "restore" upstream's default or express off as `transittunnels = 0`.
-- **A log-filter family is anchored to one complete message, and the list is re-validated against the pinned i2pd's own log literals on every bump** — see `UPDATING.md`. Widening a pattern past one known message hides evidence on the day it matters. And a source literal is not the emitted line: i2pd keeps the separator where it appends no value, so the log carries a trailing space — `churnFamilyOf` trims it, and a fixture must keep it.
+- **Prune a tunnel only when `sdk.host.get` returns `null`.** A lost key is a permanently lost address, and a _thrown_ lookup is not evidence the host is gone.
+- **Don't turn `i2pd.conf` or `tunnels.conf` into a file model.** They are generated from `config.json` and re-emitted on every init, which is how an upgrade ships generator changes.
+- **Don't rename or change `samHostId`, `samPort`, `socksHostId` or `socksPort` — the `-multi` in the host ids included — or move them out of `startos/utils.ts`.** Dependents import them by that path, and nothing in this repo would fail.
+- **Keep the health check in `main`.** Only the main procedure reaches the daemon's I2PControl port on `127.0.0.1`; that is why `reloadI2pdTunnels` shells into a temp subcontainer.

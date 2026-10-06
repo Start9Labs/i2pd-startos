@@ -20,8 +20,7 @@ import { sdk } from './sdk'
  * for the same reason.
  *
  * Do not tidy the `-multi` off the host id. Rebinding under a new id strands
- * the old host holding this external port, and `MultiHost.retire()` — the way
- * to release it — is not in the pinned SDK.
+ * the old host holding this external port until it is retired.
  */
 export const samHostId = 'sam-multi'
 export const samPort = 7656

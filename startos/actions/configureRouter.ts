@@ -19,19 +19,21 @@ const inputSpec = InputSpec.of({
   }),
   bandwidth: Value.select({
     name: i18n('Bandwidth'),
-    description: i18n('Maximum bandwidth for I2P traffic'),
+    description: i18n(
+      'Caps the traffic this router relays for other I2P users, never your own, so it costs nothing while Transit Tunnels is disabled.\n- Low: 32 KB/s, too little for Floodfill.\n- Standard: 256 KB/s.\n- High: 2048 KB/s.\n- Unlimited: no cap.',
+    ),
     default: 'O',
     values: {
       L: i18n('Low (32 KB/s)'),
       O: i18n('Standard (256 KB/s)'),
-      P: i18n('High (full speed)'),
+      P: i18n('High (2048 KB/s)'),
       X: i18n('Unlimited'),
     },
   }),
   transit: Value.union({
     name: i18n('Transit Tunnels'),
     description: i18n(
-      "Relay traffic for other I2P users. While this is disabled the router carries only your own services' traffic, and the bandwidth class above costs nothing.",
+      "- Disabled: the router carries only your own services' traffic, and the bandwidth class above costs nothing.\n- Enabled: the router also relays traffic for other I2P users, within the limits below. This helps the network and uses more bandwidth and connections.",
     ),
     default: 'disabled',
     variants: Variants.of({
@@ -67,7 +69,9 @@ const inputSpec = InputSpec.of({
   }),
   loglevel: Value.select({
     name: i18n('Log Level'),
-    description: i18n('Logging verbosity for I2Pd'),
+    description: i18n(
+      "Warning suits day-to-day use: it records failures and filters out the router's routine network chatter.\n- None: next to nothing is logged, so a failure leaves no trace.\n- Error: errors only.\n- Warning: errors and warnings, minus the known routine chatter.\n- Info: adds routine activity, unfiltered.\n- Debug: everything, unfiltered and very noisy. Turn it on to chase a specific problem, then switch back.",
+    ),
     default: 'warn',
     values: {
       none: i18n('None'),

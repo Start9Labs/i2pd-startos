@@ -8,21 +8,21 @@ import {
   socksPort,
 } from '../utils'
 
-const portInfoShape = z.object({
+const portInfoShape = z.looseObject({
   target: z.string(),
   ssl: z.boolean(),
   internalPort: z.number(),
 })
 
-export const i2pServiceEntryShape = z.object({
+export const i2pServiceEntryShape = z.looseObject({
   ports: z.record(z.string(), portInfoShape),
 })
 
-export const floodfillShape = z.object({
+export const floodfillShape = z.looseObject({
   enabled: z.boolean().catch(false),
 })
 
-export const transitShape = z.object({
+export const transitShape = z.looseObject({
   enabled: z.boolean().catch(false),
   /** Percent of `bandwidth` offered to transit. */
   share: z.number().int().min(1).max(100).catch(50),
@@ -30,7 +30,7 @@ export const transitShape = z.object({
   maxTunnels: z.number().int().min(2).catch(2500),
 })
 
-export const routerShape = z.object({
+export const routerShape = z.looseObject({
   bandwidth: z.enum(['L', 'O', 'P', 'X']).catch('O'),
   transit: transitShape.catch({ enabled: false, share: 50, maxTunnels: 2500 }),
   loglevel: z.enum(['none', 'error', 'warn', 'info', 'debug']).catch('warn'),
@@ -43,7 +43,7 @@ export const routerShape = z.object({
   reseedUrl: z.string().url().optional().catch(undefined),
 })
 
-const shape = z.object({
+const shape = z.looseObject({
   i2pServices: z
     .record(
       z.string(),
