@@ -32,7 +32,9 @@ export const deleteI2pTunnel = sdk.Action.withInput(
   async () => ({
     name: i18n('Delete I2P Tunnel'),
     description: i18n('Remove an I2P tunnel'),
-    warning: i18n('Confirm you would like to delete this .b32.i2p address'),
+    warning: i18n(
+      'This I2P address stops serving this port. If it serves no other port, its key is deleted and the address is gone for good; it cannot be issued again.',
+    ),
     allowedStatuses: 'any',
     group: null,
     visibility: 'hidden',

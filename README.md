@@ -162,6 +162,7 @@ The counterpart, also invoked through the plugin.
 
 - **What it changes:** removes one port binding from the address. The tunnel directory and **its key** are deleted only when that was the address's last binding — an address serving both an SSL and a plaintext port keeps its key until both are gone.
 - **Deleting the last binding is irreversible.** The address cannot be reissued without the key it was derived from.
+- **Uninstalling a service has the same effect on its addresses.** The plugin deletes the tunnels and keys of a host that no longer exists, and leaves every other service's tunnels in place.
 
 ## Tasks
 

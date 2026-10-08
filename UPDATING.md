@@ -57,6 +57,6 @@ diff <(grep -rho '"[^"]*"' i2pd-<old>  --include='*.cpp' --include='*.h' | sort 
 
 Read the removed side for any literal a family depends on. **Mind the trailing space**: i2pd assembles a message from several literals and leaves the separator in place even where it appends no value, so `"…AEAD verification failed "` is what reaches the log. `churnFamilyOf` trims the message before matching, so a pattern needs no trailing-space variant — but a fixture must carry the space the router actually emits, or it proves nothing.
 
-A live run still has its place, for finding families the list has never seen: run at the default `warn` level for a few hours and read the service log. If it is carrying repeating routine chatter, capture the wording verbatim, add the family to `CHURN_FAMILIES`, and add the captured line to the `DROPPED` fixtures in `test/i2pdLogFilter.test.ts`. `npm run check` fails until every family has one.
+A live run still has its place, for finding families the list has never seen: run at the default `warn` level for a few hours and read the service log. If it is carrying repeating routine chatter, capture the wording verbatim, add the family to `CHURN_FAMILIES`, and add the captured line to the `DROPPED` fixtures in `test/i2pdLogFilter.test.ts`. `npm test`, which every build runs, fails until every family has one.
 
 Never widen a pattern past one complete message. A pattern loose enough to match a message nobody has seen hides evidence on the day it matters.
