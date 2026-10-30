@@ -62,3 +62,5 @@ For significantly better performance and to be classified as a directly-reachabl
 2. Run the **Configure Router** action and put your external IP address or hostname in the **External IP / Hostname** field, so the router advertises a reachable address to its peers.
 
 Saving restarts the router. Give it 5–10 minutes to settle; the router console should move from "Firewalled" to "OK".
+
+If you publish the router's ports through StartTunnel to keep your home IP private, send I2Pd's outbound traffic through that tunnel too. Connections the router opens itself to other I2P routers otherwise leave through your home router, so those routers see your home IP. If you use the tunnel for another reason, such as a port your router can't forward, there is nothing to change.
