@@ -4,15 +4,15 @@ export const current = VersionInfo.of({
   version: '2.60.0:10',
   releaseNotes: {
     en_US:
-      'Updated the StartOS integration and clarified how to route outbound I2P traffic through StartTunnel.',
+      'The instructions cover keeping your home IP private when you publish I2Pd through StartTunnel.',
     es_ES:
-      'Se actualizó la integración con StartOS y se aclaró cómo enrutar el tráfico I2P saliente a través de StartTunnel.',
+      'Las instrucciones explican cómo mantener privada tu IP doméstica cuando publicas I2Pd a través de StartTunnel.',
     de_DE:
-      'Die StartOS-Integration wurde aktualisiert und die Anleitung zum Weiterleiten ausgehenden I2P-Verkehrs über StartTunnel präzisiert.',
+      'Die Anleitung erklärt, wie Ihre Heim-IP-Adresse privat bleibt, wenn Sie I2Pd über StartTunnel veröffentlichen.',
     pl_PL:
-      'Zaktualizowano integrację ze StartOS i wyjaśniono, jak kierować wychodzący ruch I2P przez StartTunnel.',
+      'Instrukcje wyjaśniają, jak zachować prywatność domowego adresu IP, gdy publikujesz I2Pd przez StartTunnel.',
     fr_FR:
-      "L’intégration à StartOS a été mise à jour et les instructions pour acheminer le trafic I2P sortant via StartTunnel ont été précisées.",
+      'Les instructions expliquent comment garder votre IP personnelle privée lorsque vous publiez I2Pd via StartTunnel.',
   },
   migrations: {
     up: async ({ effects }) => {},
