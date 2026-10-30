@@ -1,18 +1,18 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '2.60.0:9',
+  version: '2.60.0:10',
   releaseNotes: {
     en_US:
-      'Restarting I2Pd while it is still starting stops every process of the previous run.',
+      'Updated the StartOS integration and clarified how to route outbound I2P traffic through StartTunnel.',
     es_ES:
-      'Reiniciar I2Pd mientras aún se está iniciando detiene todos los procesos de la ejecución anterior.',
+      'Se actualizó la integración con StartOS y se aclaró cómo enrutar el tráfico I2P saliente a través de StartTunnel.',
     de_DE:
-      'Ein Neustart von I2Pd, während es noch startet, beendet alle Prozesse des vorherigen Laufs.',
+      'Die StartOS-Integration wurde aktualisiert und die Anleitung zum Weiterleiten ausgehenden I2P-Verkehrs über StartTunnel präzisiert.',
     pl_PL:
-      'Ponowne uruchomienie I2Pd w trakcie uruchamiania zatrzymuje wszystkie procesy poprzedniego uruchomienia.',
+      'Zaktualizowano integrację ze StartOS i wyjaśniono, jak kierować wychodzący ruch I2P przez StartTunnel.',
     fr_FR:
-      "Redémarrer I2Pd pendant son démarrage arrête tous les processus de l'exécution précédente.",
+      "L’intégration à StartOS a été mise à jour et les instructions pour acheminer le trafic I2P sortant via StartTunnel ont été précisées.",
   },
   migrations: {
     up: async ({ effects }) => {},
