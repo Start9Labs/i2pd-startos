@@ -77,6 +77,7 @@ const dict = {
   'Cannot create an I2P tunnel for ${package}: interface binding ${port} is not exposed, so there is no reachable endpoint to forward to.': 97,
   'Cannot create an I2P tunnel for ${package}: interface binding ${port} has no bridge-reachable address to forward to.': 98,
   'Create new address issues a new .b32.i2p address. Any other choice is an address this interface already has with the other SSL setting, and adds this setting to it.': 99,
+  'This key file has no signing key, so its address can never be reached. Leave the field blank to generate a new address.': 100,
 } as const
 
 export type I18nKey = keyof typeof dict

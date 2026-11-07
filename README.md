@@ -69,7 +69,7 @@ Paths below are relative to the volume root, so `etc/i2pd/i2pd.conf` is
 | `etc/i2pd/tunnels.conf`            | The package | The generated tunnel definitions          |
 | `tunnels/<pkg>/<host>/tunnel_<n>/` | The package | One tunnel's `.dat` key and its `hostname` |
 
-New destinations use Ed25519 signing and ElGamal encryption. The 679-byte `.dat` format is a 391-byte destination, a 256-byte encryption private key, then a 32-byte signing seed; the signing public key occupies the final 32 bytes of the destination's 128-byte signing field. Existing stored keys are not rewritten. Startup adjusts volume ownership without changing file modes.
+New destinations use Ed25519 signing and ElGamal encryption. The 679-byte `.dat` format is a 391-byte destination, a 256-byte encryption private key, then a 32-byte signing seed; the signing public key occupies the final 32 bytes of the destination's 128-byte signing field. On update, a stored key whose signing public key is all zero is replaced with a new key, and so a new address; the import field refuses such a key. Startup adjusts volume ownership without changing file modes.
 
 **Each tunnel's key file is what owns its address.** A `.b32.i2p` address is derived from the key, so losing the key loses the address permanently — there is no way to reissue the same one. This is the single most consequential fact about the package, and it drives everything under [Backups and Restore](#backups-and-restore).
 

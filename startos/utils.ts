@@ -123,6 +123,10 @@ export function generateI2pKey(): { keyfile: Buffer; hostname: string } {
   return { keyfile, hostname }
 }
 
+/** An all-zero signing public key, which no private key can sign for. */
+export const lacksSigningKey = (keyfile: Buffer): boolean =>
+  keyfile.length === 679 && keyfile.subarray(352, 384).every((b) => b === 0)
+
 /**
  * Parse and validate an existing i2pd .dat key file from base64.
  * Supports only EdDSA-SHA512-ED25519 + ElGamal (sigType=7, encType=0) —
@@ -159,6 +163,14 @@ export function parseI2pKey(base64Key: string | null): {
           sigType: String(sigType),
           encType: String(encType),
         },
+      ),
+    )
+  }
+
+  if (lacksSigningKey(keyfile)) {
+    throw new Error(
+      i18n(
+        'This key file has no signing key, so its address can never be reached. Leave the field blank to generate a new address.',
       ),
     )
   }
