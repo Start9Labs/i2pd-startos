@@ -62,6 +62,13 @@ export const bridgeHost = (
     : undefined
 }
 
+const i2pHostname = (destination: Buffer): string =>
+  base32
+    .stringify(createHash('sha256').update(destination).digest(), {
+      pad: false,
+    })
+    .toLowerCase() + '.b32.i2p'
+
 /**
  * Generate a valid i2pd server tunnel key pair (.dat file) and derive the
  * correct .b32.i2p address from it.
@@ -71,14 +78,14 @@ export const bridgeHost = (
  *
  * Destination layout (391 bytes total):
  *   [0..255]   ElGamal public key           (256 bytes)
- *   [256..287] Ed25519 public key            (32 bytes, first 32 of 128-byte signingPublicKey field)
- *   [288..383] Zeros                         (96 bytes padding)
+ *   [256..351] Zeros                         (96 bytes padding)
+ *   [352..383] Ed25519 public key            (32 bytes, last 32 of 128-byte signingPublicKey field)
  *   [384]      Certificate type = 0x05       (KeyCertificate)
  *   [385..386] Certificate length = 0x0004   (4 bytes)
  *   [387..388] Signing key type = 0x0007     (EdDSA-SHA512-ED25519)
  *   [389..390] Encryption key type = 0x0000  (ElGamal)
  *
- * .dat file: [destination (391)] [Ed25519 seed (32)] [ElGamal private (256)] = 679 bytes
+ * .dat file: [destination (391)] [ElGamal private (256)] [Ed25519 seed (32)] = 679 bytes
  *
  * .b32.i2p = base32(SHA256(destination))[0..51].toLowerCase() + ".b32.i2p"
  */
@@ -102,19 +109,16 @@ export function generateI2pKey(): { keyfile: Buffer; hostname: string } {
   // Build the 391-byte i2p Destination
   const destination = Buffer.alloc(391)
   elgPub.copy(destination, 0) // ElGamal pub → bytes 0-255
-  destination.set(edPub, 256) // Ed25519 pub → bytes 256-287
+  destination.set(edPub, 352) // Ed25519 pub → bytes 352-383
   destination[384] = 0x05 // KeyCertificate
   destination.writeUInt16BE(4, 385) // cert length = 4
   destination.writeUInt16BE(7, 387) // sigType = EdDSA-SHA512-ED25519
   destination.writeUInt16BE(0, 389) // encType = ElGamal
 
-  // .b32.i2p = base32(SHA256(destination)), no padding, lowercase
-  const hash = createHash('sha256').update(destination).digest()
-  const hostname =
-    base32.stringify(hash, { pad: false }).toLowerCase() + '.b32.i2p'
+  const hostname = i2pHostname(destination)
 
-  // .dat file = destination + private keys (i2pd reads: signing key first, then crypto key)
-  const keyfile = Buffer.concat([destination, Buffer.from(edSeed), elgPriv])
+  // i2pd reads the encryption private key before the signing seed.
+  const keyfile = Buffer.concat([destination, elgPriv, Buffer.from(edSeed)])
 
   return { keyfile, hostname }
 }
@@ -159,10 +163,7 @@ export function parseI2pKey(base64Key: string | null): {
     )
   }
 
-  const hash = createHash('sha256').update(destination).digest()
-  const hostname =
-    base32.stringify(hash, { pad: false }).toLowerCase() + '.b32.i2p'
-  return { keyfile, hostname }
+  return { keyfile, hostname: i2pHostname(destination) }
 }
 
 // The console issues a session token on every page, so it has to be read
