@@ -45,11 +45,11 @@ One image, built here.
 
 | Subcontainer | Purpose                                                         |
 | ------------ | --------------------------------------------------------------- |
-| `i2pd-sub`   | The permissions oneshot and the router — the one to `attach` to |
+| `i2pd-sub`   | The ownership oneshot and the router — the one to `attach` to |
 
 **This package declares the `url-v0` plugin**, which is what lets it hand addresses to other services. That is the significant thing about it: most packages are only reachable, while this one makes other packages reachable.
 
-**The router's log stream is filtered before it reaches the service log.** At `warn` a healthy router narrates its routine network weather at ~25 lines a minute, over 98% of its output and none of it actionable. `startos/i2pdLogFilter.ts` drops exactly the measured families — transport-session timeouts and handshake failures, peer-database maintenance, per-stream retry mechanics, tunnel build-and-test churn, SAM per-stream teardown, lookups for departed peers, and undecryptable garlic records. Every pattern is anchored to one complete known message, so any line the list has never seen still passes, and each start logs `i2pd log filter active: N known-weather families`. Kept on purpose because each is failure evidence: everything about reseeding, binding, clock skew and router status; `SAM: Bind`, `SAM: Accept error` and `SAM: I2P acceptor has been reset`, the router-side signature of a SAM bridge that stopped serving; and both LeaseSet-publication complaints. **The filter applies at `warn` only** — a user who selects `info` or `debug` in Configure Router is diagnosing something and gets the raw stream.
+**The router's log stream is filtered before it reaches the service log.** At `warn` a healthy router narrates its routine network weather at ~25 lines a minute, over 98% of its output and none of it actionable. `startos/i2pdLogFilter.ts` drops exactly the measured families — transport-session timeouts and handshake failures, peer-database maintenance, per-stream retry mechanics, tunnel build-and-test churn, SAM per-stream teardown, lookups for departed peers, undecryptable garlic records, and the `Token` diagnostic each health check triggers. Every pattern is anchored to one complete known message, so any line the list has never seen still passes, and each start logs `i2pd log filter active: N known-weather families`. Kept on purpose because each is failure evidence: everything about reseeding, binding, clock skew and router status; `SAM: Bind`, `SAM: Accept error` and `SAM: I2P acceptor has been reset`, the router-side signature of a SAM bridge that stopped serving; and both LeaseSet-publication complaints. **The filter applies at `warn` only** — a user who selects `info` or `debug` in Configure Router is diagnosing something and gets the raw stream.
 
 ## Volume and Data Layout
 
@@ -68,6 +68,8 @@ Paths below are relative to the volume root, so `etc/i2pd/i2pd.conf` is
 | `etc/i2pd/i2pd.conf`               | The package | The generated router configuration        |
 | `etc/i2pd/tunnels.conf`            | The package | The generated tunnel definitions          |
 | `tunnels/<pkg>/<host>/tunnel_<n>/` | The package | One tunnel's `.dat` key and its `hostname` |
+
+New destinations use Ed25519 signing and ElGamal encryption. The 679-byte `.dat` format is a 391-byte destination, a 256-byte encryption private key, then a 32-byte signing seed; the signing public key occupies the final 32 bytes of the destination's 128-byte signing field. On update, a stored key whose signing public key is all zero is replaced with a new key, and so a new address; the import field refuses such a key. Startup adjusts volume ownership without changing file modes.
 
 **Each tunnel's key file is what owns its address.** A `.b32.i2p` address is derived from the key, so losing the key loses the address permanently — there is no way to reissue the same one. This is the single most consequential fact about the package, and it drives everything under [Backups and Restore](#backups-and-restore).
 
@@ -176,11 +178,11 @@ One check, on the router.
 | ------ | ------------- | ------------------------------------------ |
 | `i2pd` | "I2P Network" | i2pd's I2PControl `RouterInfo` on loopback |
 
-It asks the router for `net.status`, `netdb.knownpeers` and `netdb.activepeers`, so it reports integration with the network rather than a bound port — which is what makes the first several minutes read as starting rather than failing.
+It authenticates on each check, then asks the router for `net.status`, `net.error`, `netdb.knownpeers` and `netdb.activepeers`. It reports integration with the network rather than a bound port — which is what makes the first several minutes read as starting rather than failing. Each HTTPS request has a ten-second inactivity timeout, and the self-signed certificate is accepted only for this loopback request.
 
-**It is written to distinguish "slow" from "never".** Everything reads as starting during a five-minute grace period. Past it, an empty network database means the router never reached a reseed server and will not recover on its own; a reported router error status (8 and above) is surfaced with its number; and a router that has reseeded but built no tunnels yet reports starting, because that one does resolve itself.
+**It is written to distinguish "slow" from "never".** Everything reads as starting during a five-minute grace period. Past it, an empty network database means the router never reached a reseed server and will not recover on its own; native router errors (1: clock skew, 2: offline, 5: no descriptors) are surfaced with their number. NAT classifications (3 and 4) are not fatal errors. A router that has reseeded but has no active peers yet reports starting.
 
-**It fails closed.** A reply the router cannot answer properly — a JSON-RPC error object rather than a result — carries no numbers, and every comparison in the check is false against nothing, so such a reply reports starting rather than falling through to success. That matters because the check queries `RouterInfo` without authenticating, which i2pd accepts only because it never validates the token it issues (PurpleI2P/i2pd#2138); if it ever starts validating, every reply becomes an error object.
+**It fails closed.** Failed authentication, a JSON-RPC error, or a reply missing any of the four numeric metrics reports starting rather than success. Tokens are renewed on every check, including after a daemon restart. Upstream 3.0.0 accepts the required `Token` but also logs `I2PControl: RouterInfo unknown request Token` while iterating RouterInfo parameters; this diagnostic is not an authentication failure, and the log filter drops it at `warn`.
 
 The empty-network-database case is usually not an I2P fault: reseeding resolves hostnames over the container's resolver, so a server whose DNS is not answering breaks I2P alone and looks like an I2P bug. A router that reseeded but stays unintegrated is usually a reachability problem instead — the transport ports not being forwarded is the common cause, and it also shows in the router console as a firewalled status.
 

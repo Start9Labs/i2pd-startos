@@ -189,7 +189,6 @@ export function generateI2pdConf(config: I2pdConfig): string {
   lines.push(`port = ${samPort}`)
   lines.push('')
 
-  // i2pd never validates the token it issues (PurpleI2P/i2pd#2138) — loopback only.
   lines.push('[i2pcontrol]')
   lines.push('enabled = true')
   lines.push('address = 127.0.0.1')

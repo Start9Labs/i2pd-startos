@@ -6,7 +6,7 @@
 
 ## Getting Started
 
-I2P starts as soon as you launch it, but it is not usable straight away: the first 3 to 10 minutes are spent finding peers and joining the network. The **I2P Network** health check reports that progress and turns green once the router is integrated. The wait is normal, not a fault.
+I2P starts as soon as you launch it, but it is not usable straight away: the first 3 to 10 minutes are spent finding peers and joining the network. The **I2P Network** health check reports that progress and turns green once the router is integrated. The wait is normal, not a fault. After its five-minute grace period, it reports router errors such as clock skew or being offline; a firewalled NAT classification alone is not a failure.
 
 ## Warnings
 

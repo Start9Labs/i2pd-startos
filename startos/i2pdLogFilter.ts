@@ -95,6 +95,8 @@ export const CHURN_FAMILIES: RegExp[] = [
   /^Garlic: Payload section AEAD decryption failed$/,
   /^Garlic: Incoming sessions come too often$/,
   /^ElGamal decrypt hash doesn't match$/,
+  // The health check's required token, logged at error level on every check.
+  /^I2PControl: RouterInfo unknown request Token$/,
 ]
 
 export const CHURN_FAMILY_COUNT = CHURN_FAMILIES.length

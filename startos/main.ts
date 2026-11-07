@@ -9,16 +9,9 @@ import {
   generateTunnelsConf,
 } from './fileModels/i2pd'
 import { CHURN_FAMILY_COUNT, i2pdLogFilter } from './i2pdLogFilter'
-import { i2pControlPort } from './utils'
+import { I2PCONTROL_PASSWORD, i2pControlPort } from './utils'
 
-/**
- * I2PControl JSON-RPC, over the loopback address the generated conf binds it
- * to. Self-signed cert, and no Authenticate round-trip: i2pd never validates
- * the token it issues (PurpleI2P/i2pd#2138), while a `Token` field on a
- * RouterInfo call is one i2pd logs an error for. If it ever starts validating,
- * every reply becomes an error object, which the check below reads as "no
- * answer yet" rather than success.
- */
+/** Accepts the self-signed certificate on loopback only. */
 const i2pControlRpc = (method: string, params: Record<string, unknown>) =>
   new Promise<any>((resolve, reject) => {
     const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
@@ -46,6 +39,7 @@ const i2pControlRpc = (method: string, params: Record<string, unknown>) =>
       },
     )
     req.on('error', reject)
+    req.setTimeout(10_000, () => req.destroy(new Error('I2PControl timeout')))
     req.write(body)
     req.end()
   })
@@ -57,19 +51,31 @@ const i2pControlRpc = (method: string, params: Record<string, unknown>) =>
  */
 async function checkRouter(): Promise<healthFns.HealthCheckResult> {
   try {
+    const auth = await i2pControlRpc('Authenticate', {
+      API: 1,
+      Password: I2PCONTROL_PASSWORD,
+    })
+    const token = auth?.result?.Token
+    if (typeof token !== 'string' || !token) {
+      throw new Error('I2PControl authentication failed')
+    }
     const info = await i2pControlRpc('RouterInfo', {
+      Token: token,
       'i2p.router.net.status': null,
+      'i2p.router.net.error': null,
       'i2p.router.netdb.knownpeers': null,
       'i2p.router.netdb.activepeers': null,
     })
     const netStatus = info?.result?.['i2p.router.net.status']
+    const netError = info?.result?.['i2p.router.net.error']
     const knownPeers = info?.result?.['i2p.router.netdb.knownpeers']
     const activePeers = info?.result?.['i2p.router.netdb.activepeers']
 
-    // A reply without a usable `result` carries no numbers, and every
-    // comparison below is false against undefined — fail toward `starting`
-    // rather than reporting success on a router that said nothing.
-    if (info?.result == null || netStatus == null) {
+    if (
+      ![netStatus, netError, knownPeers, activePeers].every(
+        (value) => typeof value === 'number' && Number.isFinite(value),
+      )
+    ) {
       return {
         result: 'starting',
         message: i18n('Starting the I2P router'),
@@ -88,13 +94,12 @@ async function checkRouter(): Promise<healthFns.HealthCheckResult> {
       }
     }
 
-    // net.status 0-7 are operational (OK, testing, firewalled, hidden,
-    // warnings); 8+ are errors (I2CP, clock skew, no peers, and the rest).
-    if (netStatus >= 8) {
+    // RouterError 3 and 4 describe NAT, not fatal router failures.
+    if (netError !== 0 && netError !== 3 && netError !== 4) {
       return {
         result: 'failure',
         message: i18n('The I2P router reported error status ${status}', {
-          status: String(netStatus),
+          status: String(netError),
         }),
       }
     }
@@ -183,7 +188,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         command: [
           'sh',
           '-c',
-          'chmod -R 755 /var/lib/i2pd && chown -R i2pd:i2pd /var/lib/i2pd && [ -e /var/lib/i2pd/certificates ] || ln -s /usr/share/i2pd/certificates /var/lib/i2pd/certificates',
+          'chown -R i2pd:i2pd /var/lib/i2pd && { [ -e /var/lib/i2pd/certificates ] || ln -s /usr/share/i2pd/certificates /var/lib/i2pd/certificates; }',
         ],
         user: 'root',
       },

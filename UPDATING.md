@@ -6,13 +6,13 @@ i2pd is installed from the Alpine edge package repository and pinned in the `Doc
 
 ### i2pd (canonical upstream)
 
-Canonical home: <https://github.com/PurpleI2P/i2pd>. Latest release tag:
+Canonical home: <https://github.com/PurpleI2P/i2pd>. List upstream tags rather than trusting the latest-release badge:
 
 ```
-gh release view -R PurpleI2P/i2pd --json tagName -q .tagName
+gh api 'repos/PurpleI2P/i2pd/tags?per_page=100' --jq '.[].name'
 ```
 
-Use this to know what the newest i2pd is so you can compare against what Alpine edge ships (next section). The pin in this repo tracks the Alpine package, not the GitHub tag.
+Compare stable versions numerically; the tag list is not version-sorted. Use the newest stable tag to compare against what Alpine edge ships (next section). The pin in this repo tracks the Alpine package, not the GitHub tag.
 
 ### i2pd as packaged by Alpine edge (what actually ships)
 

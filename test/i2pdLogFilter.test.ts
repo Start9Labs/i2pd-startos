@@ -74,6 +74,7 @@ const DROPPED = [
   '10:58:05@96/warn - Garlic: Payload section AEAD decryption failed',
   '10:58:20@96/error - Garlic: Incoming sessions come too often',
   "10:59:00@96/error - ElGamal decrypt hash doesn't match",
+  '11:00:00@96/error - I2PControl: RouterInfo unknown request Token',
   // Header-format drift must not blind the matcher: a leading date token,
   // fractional seconds, or an alphanumeric thread id still parses.
   '2026-08-24 12:44:05@235/warn - SSU2: Retry token is zero',
@@ -99,6 +100,7 @@ const KEPT = [
   '13:05:00@96/warn - Streaming: Resend #3, giving up, closing session',
   '13:05:10@939/warn - SSU2: Unexpected message type 0 -- ABORTING, router shutting down',
   '13:05:20@96/error - SAM: Read error: Connection refused',
+  '13:05:30@96/error - I2PControl: RouterInfo unknown request i2p.router.net.total.received',
   'a line with no i2pd prefix at all',
 ]
 
