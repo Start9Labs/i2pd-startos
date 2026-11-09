@@ -1,6 +1,6 @@
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { samHostId, samPort, socksHostId, socksPort } from './utils'
+import { ntcp2Port, samHostId, samPort, socksHostId, socksPort } from './utils'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   // I2P exposes SOCKS proxy on port 4447 (i2p network only)
@@ -105,9 +105,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const ssu2Receipt = await ssu2Origin.export([ssu2Interface])
 
   const ntcp2Multi = sdk.MultiHost.of(effects, 'ntcp2-multi')
-  const ntcp2Origin = await ntcp2Multi.bindPort(4451, {
+  const ntcp2Origin = await ntcp2Multi.bindPort(ntcp2Port, {
     protocol: null,
-    preferredExternalPort: 4451,
+    preferredExternalPort: ntcp2Port,
     addSsl: null,
     secure: { ssl: false },
   })

@@ -37,14 +37,14 @@
 
 One image, built here.
 
-| Property      | Value                                                      |
-| ------------- | ---------------------------------------------------------- |
-| Image         | Built from this repo's `Dockerfile`                        |
-| Architectures | x86_64, aarch64, riscv64                                   |
+| Property      | Value                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Image         | Built from this repo's `Dockerfile`                                                                               |
+| Architectures | x86_64, aarch64, riscv64                                                                                          |
 | Entrypoint    | Overridden — the router is launched against the volume's `i2pd.conf` and data directory, not the image's defaults |
 
-| Subcontainer | Purpose                                                         |
-| ------------ | --------------------------------------------------------------- |
+| Subcontainer | Purpose                                                       |
+| ------------ | ------------------------------------------------------------- |
 | `i2pd-sub`   | The ownership oneshot and the router — the one to `attach` to |
 
 **This package declares the `url-v0` plugin**, which is what lets it hand addresses to other services. That is the significant thing about it: most packages are only reachable, while this one makes other packages reachable.
@@ -62,12 +62,12 @@ One volume, holding the router's identity and every tunnel's keys.
 Paths below are relative to the volume root, so `etc/i2pd/i2pd.conf` is
 `/var/lib/i2pd/etc/i2pd/i2pd.conf` inside the container.
 
-| Path                               | Written by  | Holds                                     |
-| ---------------------------------- | ----------- | ----------------------------------------- |
+| Path                               | Written by  | Holds                                            |
+| ---------------------------------- | ----------- | ------------------------------------------------ |
 | `config.json`                      | The package | The file model — see [File Models](#file-models) |
-| `etc/i2pd/i2pd.conf`               | The package | The generated router configuration        |
-| `etc/i2pd/tunnels.conf`            | The package | The generated tunnel definitions          |
-| `tunnels/<pkg>/<host>/tunnel_<n>/` | The package | One tunnel's `.dat` key and its `hostname` |
+| `etc/i2pd/i2pd.conf`               | The package | The generated router configuration               |
+| `etc/i2pd/tunnels.conf`            | The package | The generated tunnel definitions                 |
+| `tunnels/<pkg>/<host>/tunnel_<n>/` | The package | One tunnel's `.dat` key and its `hostname`       |
 
 New destinations use Ed25519 signing and ElGamal encryption. The 679-byte `.dat` format is a 391-byte destination, a 256-byte encryption private key, then a 32-byte signing seed; the signing public key occupies the final 32 bytes of the destination's 128-byte signing field. On update, a stored key whose signing public key is all zero is replaced with a new key, and so a new address; the import field refuses such a key. Startup adjusts volume ownership without changing file modes.
 
@@ -114,6 +114,8 @@ Five interfaces, plus one port deliberately bound **without** one.
 **A dependent resolves it with `sdk.host.getBridgeAddress`**, importing `samHostId` and `samPort` from `i2pd-startos/startos/utils` rather than hardcoding either; `socksHostId` and `socksPort` are exported alongside them for a dependent that must dial `.b32.i2p` peers itself. Those four names are a published contract — nothing in this repo outside `interfaces.ts` references them, so renaming one breaks dependents with no signal here.
 
 **The two transport ports are exported so they can be forwarded.** Without a consistent external port mapping the router reports itself firewalled behind a symmetric NAT, and inbound tunnel delivery fails — which breaks every server tunnel this package issues. They are interfaces so the user can allow that forwarding.
+
+**The transports run over IPv6 as well as IPv4.** When exactly one public IPv6 address is exposed on NTCP2's port, the router publishes it as its NTCP2 IPv6 address, and the router restarts when that changes; otherwise it publishes none. SSU2 learns its IPv6 address from peers. The package never hands i2pd the container's own ULA.
 
 ## Installation and First-Run Flow
 

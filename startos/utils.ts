@@ -40,6 +40,24 @@ export const consolePort = 7070
 export const i2pControlPort = 7650
 export const I2PCONTROL_PASSWORD = 'itoopie'
 
+export const ntcp2Port = 4451
+
+/** The NTCP2 binding's public IPv6, or null unless exactly one is exposed on the port i2pd publishes. */
+export const ntcp2PublicIpv6 = (effects: T.Effects) =>
+  sdk.host.getOwn(effects, 'ntcp2-multi', (host) => {
+    const ipv6 = new Set(
+      (
+        Object.values(host?.bindings[ntcp2Port]?.interfaces ?? {})
+          .find((i) => i.id === 'ntcp2')
+          ?.addressInfo.public.filter({ kind: 'ipv6' })
+          .format('hostname-info') ?? []
+      )
+        .filter((h) => h.port === ntcp2Port)
+        .map((h) => h.hostname),
+    )
+    return ipv6.size === 1 ? [...ipv6][0] : null
+  })
+
 /**
  * The IPv4 LXC-bridge `{ hostname, port }` for the interface on a binding of an
  * already-resolved host. `<pkg>.startos` DNS and container IPs are deprecated;

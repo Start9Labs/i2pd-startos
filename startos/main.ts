@@ -9,7 +9,7 @@ import {
   generateTunnelsConf,
 } from './fileModels/i2pd'
 import { CHURN_FAMILY_COUNT, i2pdLogFilter } from './i2pdLogFilter'
-import { I2PCONTROL_PASSWORD, i2pControlPort } from './utils'
+import { I2PCONTROL_PASSWORD, i2pControlPort, ntcp2PublicIpv6 } from './utils'
 
 /** Accepts the self-signed certificate on loopback only. */
 const i2pControlRpc = (method: string, params: Record<string, unknown>) =>
@@ -152,7 +152,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (config) {
     await sdk.volumes.i2pd.writeFile(
       'etc/i2pd/i2pd.conf',
-      generateI2pdConf(config),
+      generateI2pdConf(config, await ntcp2PublicIpv6(effects).const()),
     )
     await sdk.volumes.i2pd.writeFile(
       'etc/i2pd/tunnels.conf',
