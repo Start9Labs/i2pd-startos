@@ -78,6 +78,10 @@ const dict = {
   'Cannot create an I2P tunnel for ${package}: interface binding ${port} has no bridge-reachable address to forward to.': 98,
   'Create new address issues a new .b32.i2p address. Any other choice is an address this interface already has with the other SSL setting, and adds this setting to it.': 99,
   'This key file has no signing key, so its address can never be reached. Leave the field blank to generate a new address.': 100,
+  'Transport Gateway': 101,
+  'No public transport address is exposed': 102,
+  'The I2P transports are exposed over ${family} on ${exposed}, but this service’s outbound traffic leaves through ${outbound}. The router learns its address from outbound traffic, so it cannot use the exposed address. Set this service’s outbound gateway to ${exposed}, or expose the transports on ${outbound}.': 103,
+  'Exposed on the outbound gateway (${gateway})': 104,
 } as const
 
 export type I18nKey = keyof typeof dict

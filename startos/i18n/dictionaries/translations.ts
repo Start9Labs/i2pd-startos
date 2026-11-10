@@ -79,6 +79,10 @@ export default {
     98: 'No se puede crear un túnel I2P para ${package}: el enlace de interfaz ${port} no tiene ninguna dirección accesible por el puente a la que reenviar.',
     99: 'Crear nueva dirección emite una nueva dirección .b32.i2p. Cualquier otra opción es una dirección que esta interfaz ya tiene con el otro ajuste de SSL, y le añade este ajuste.',
     100: 'Este archivo de clave no tiene clave de firma, por lo que su dirección nunca será accesible. Deje el campo vacío para generar una dirección nueva.',
+    101: 'Puerta de enlace de transporte',
+    102: 'No hay ninguna dirección de transporte pública expuesta',
+    103: 'Los transportes I2P están expuestos por ${family} en ${exposed}, pero el tráfico saliente de este servicio sale por ${outbound}. El router aprende su dirección del tráfico saliente, así que no puede usar la dirección expuesta. Configure la puerta de enlace de salida de este servicio en ${exposed}, o exponga los transportes en ${outbound}.',
+    104: 'Expuesto en la puerta de enlace de salida (${gateway})',
   },
   de_DE: {
     11: 'I2P-SOCKS-Proxy',
@@ -158,6 +162,10 @@ export default {
     98: 'Für ${package} kann kein I2P-Tunnel erstellt werden: die Schnittstellenbindung ${port} hat keine über die Bridge erreichbare Adresse zum Weiterleiten.',
     99: 'Neue Adresse erstellen vergibt eine neue .b32.i2p-Adresse. Jede andere Wahl ist eine Adresse, die diese Schnittstelle bereits mit der anderen SSL-Einstellung hat, und fügt ihr diese Einstellung hinzu.',
     100: 'Diese Schlüsseldatei enthält keinen Signaturschlüssel, daher ist ihre Adresse niemals erreichbar. Lassen Sie das Feld leer, um eine neue Adresse zu erzeugen.',
+    101: 'Transport-Gateway',
+    102: 'Keine öffentliche Transportadresse freigegeben',
+    103: 'Die I2P-Transporte sind über ${family} auf ${exposed} freigegeben, aber der ausgehende Datenverkehr dieses Dienstes verlässt den Server über ${outbound}. Der Router lernt seine Adresse aus dem ausgehenden Datenverkehr und kann die freigegebene Adresse daher nicht nutzen. Setzen Sie das ausgehende Gateway dieses Dienstes auf ${exposed} oder geben Sie die Transporte über ${outbound} frei.',
+    104: 'Über das ausgehende Gateway freigegeben (${gateway})',
   },
   pl_PL: {
     11: 'Proxy SOCKS I2P',
@@ -237,6 +245,10 @@ export default {
     98: 'Nie można utworzyć tunelu I2P dla ${package}: powiązanie interfejsu ${port} nie ma adresu osiągalnego przez mostek, do którego można przekazywać ruch.',
     99: 'Utwórz nowy adres wydaje nowy adres .b32.i2p. Każdy inny wybór to adres, który ten interfejs ma już z drugim ustawieniem SSL, i dodaje do niego to ustawienie.',
     100: 'Ten plik klucza nie zawiera klucza podpisującego, więc jego adres nigdy nie będzie osiągalny. Pozostaw pole puste, aby wygenerować nowy adres.',
+    101: 'Brama transportu',
+    102: 'Żaden publiczny adres transportu nie jest udostępniony',
+    103: 'Transporty I2P są udostępnione przez ${family} na ${exposed}, ale ruch wychodzący tej usługi opuszcza serwer przez ${outbound}. Router poznaje swój adres z ruchu wychodzącego, więc nie może użyć udostępnionego adresu. Ustaw bramę wychodzącą tej usługi na ${exposed} albo udostępnij transporty przez ${outbound}.',
+    104: 'Udostępnione przez bramę wychodzącą (${gateway})',
   },
   fr_FR: {
     11: 'Proxy SOCKS I2P',
@@ -316,5 +328,9 @@ export default {
     98: "Impossible de créer un tunnel I2P pour ${package} : la liaison d'interface ${port} n'a aucune adresse joignable via le pont vers laquelle transférer.",
     99: "Créer une nouvelle adresse émet une nouvelle adresse .b32.i2p. Tout autre choix est une adresse que cette interface possède déjà avec l'autre réglage SSL, et lui ajoute ce réglage.",
     100: 'Ce fichier de clé ne contient pas de clé de signature, son adresse ne sera donc jamais joignable. Laissez le champ vide pour générer une nouvelle adresse.',
+    101: 'Passerelle de transport',
+    102: 'Aucune adresse de transport publique n’est exposée',
+    103: 'Les transports I2P sont exposés en ${family} sur ${exposed}, mais le trafic sortant de ce service passe par ${outbound}. Le routeur apprend son adresse à partir du trafic sortant, il ne peut donc pas utiliser l’adresse exposée. Définissez la passerelle sortante de ce service sur ${exposed}, ou exposez les transports sur ${outbound}.',
+    104: 'Exposé sur la passerelle sortante (${gateway})',
   },
 } as const satisfies Record<string, LangDict>

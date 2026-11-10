@@ -37,14 +37,14 @@
 
 One image, built here.
 
-| Property      | Value                                                      |
-| ------------- | ---------------------------------------------------------- |
-| Image         | Built from this repo's `Dockerfile`                        |
-| Architectures | x86_64, aarch64, riscv64                                   |
+| Property      | Value                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Image         | Built from this repo's `Dockerfile`                                                                               |
+| Architectures | x86_64, aarch64, riscv64                                                                                          |
 | Entrypoint    | Overridden — the router is launched against the volume's `i2pd.conf` and data directory, not the image's defaults |
 
-| Subcontainer | Purpose                                                         |
-| ------------ | --------------------------------------------------------------- |
+| Subcontainer | Purpose                                                       |
+| ------------ | ------------------------------------------------------------- |
 | `i2pd-sub`   | The ownership oneshot and the router — the one to `attach` to |
 
 **This package declares the `url-v0` plugin**, which is what lets it hand addresses to other services. That is the significant thing about it: most packages are only reachable, while this one makes other packages reachable.
@@ -62,12 +62,12 @@ One volume, holding the router's identity and every tunnel's keys.
 Paths below are relative to the volume root, so `etc/i2pd/i2pd.conf` is
 `/var/lib/i2pd/etc/i2pd/i2pd.conf` inside the container.
 
-| Path                               | Written by  | Holds                                     |
-| ---------------------------------- | ----------- | ----------------------------------------- |
+| Path                               | Written by  | Holds                                            |
+| ---------------------------------- | ----------- | ------------------------------------------------ |
 | `config.json`                      | The package | The file model — see [File Models](#file-models) |
-| `etc/i2pd/i2pd.conf`               | The package | The generated router configuration        |
-| `etc/i2pd/tunnels.conf`            | The package | The generated tunnel definitions          |
-| `tunnels/<pkg>/<host>/tunnel_<n>/` | The package | One tunnel's `.dat` key and its `hostname` |
+| `etc/i2pd/i2pd.conf`               | The package | The generated router configuration               |
+| `etc/i2pd/tunnels.conf`            | The package | The generated tunnel definitions                 |
+| `tunnels/<pkg>/<host>/tunnel_<n>/` | The package | One tunnel's `.dat` key and its `hostname`       |
 
 New destinations use Ed25519 signing and ElGamal encryption. The 679-byte `.dat` format is a 391-byte destination, a 256-byte encryption private key, then a 32-byte signing seed; the signing public key occupies the final 32 bytes of the destination's 128-byte signing field. On update, a stored key whose signing public key is all zero is replaced with a new key, and so a new address; the import field refuses such a key. Startup adjusts volume ownership without changing file modes.
 
@@ -107,6 +107,8 @@ Five interfaces, plus one port deliberately bound **without** one.
 | I2P SSU2 Transport  | `ssu2`    | p2p  | 4450 | Peer-to-peer transport (UDP)       |
 | I2P NTCP2 Transport | `ntcp2`   | p2p  | 4451 | Peer-to-peer transport (TCP)       |
 
+The HTTP proxy listens on IPv4 and IPv6. SOCKS remains IPv4-only: i2pd 3.0.0 requires an IPv4 listener to reply to SOCKS UDP association requests.
+
 **The proxies are not general-purpose privacy proxies.** They reach `.i2p` addresses only — unlike Tor's SOCKS proxy, pointing a browser at them does not anonymize ordinary web traffic.
 
 **SAM is bound on 7656 with no interface exported**, and that is a security decision: SAM is unauthenticated and lets a caller create server destinations, not merely proxy outbound, so it is reachable by other services over the internal bridge and from nowhere else — never on the LAN, clearnet, or Tor.
@@ -114,6 +116,8 @@ Five interfaces, plus one port deliberately bound **without** one.
 **A dependent resolves it with `sdk.host.getBridgeAddress`**, importing `samHostId` and `samPort` from `i2pd-startos/startos/utils` rather than hardcoding either; `socksHostId` and `socksPort` are exported alongside them for a dependent that must dial `.b32.i2p` peers itself. Those four names are a published contract — nothing in this repo outside `interfaces.ts` references them, so renaming one breaks dependents with no signal here.
 
 **The two transport ports are exported so they can be forwarded.** Without a consistent external port mapping the router reports itself firewalled behind a symmetric NAT, and inbound tunnel delivery fails — which breaks every server tunnel this package issues. They are interfaces so the user can allow that forwarding.
+
+**The transports run over IPv6 as well as IPv4.** When exactly one public IPv6 address is exposed on NTCP2's port, the package seeds `ntcp2.addressv6` with it, and the router restarts when that seed changes; otherwise the option is omitted. SSU2 address discovery updates both transports and can replace the seed with the server's egress IPv6 address, even when no NTCP2 IPv6 address is enabled in Interfaces. An advertised address therefore does not establish that NTCP2 is reachable there. The package never hands i2pd the container's own ULA.
 
 ## Installation and First-Run Flow
 
@@ -172,17 +176,20 @@ None. This package raises no tasks, so the service is never held on a prompt and
 
 ## Health Checks
 
-One check, on the router.
+Two checks: the router's integration, and whether its exposed transport addresses are usable.
 
-| Check  | Displayed as  | Method                                     |
-| ------ | ------------- | ------------------------------------------ |
-| `i2pd` | "I2P Network" | i2pd's I2PControl `RouterInfo` on loopback |
+| Check               | Displayed as        | Method                                                                       |
+| ------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `i2pd`              | "I2P Network"       | i2pd's I2PControl `RouterInfo` on loopback                                   |
+| `transport-gateway` | "Transport Gateway" | the gateways of the public NTCP2/SSU2 addresses against `getOutboundGateway` |
 
 It authenticates on each check, then asks the router for `net.status`, `net.error`, `netdb.knownpeers` and `netdb.activepeers`. It reports integration with the network rather than a bound port — which is what makes the first several minutes read as starting rather than failing. Each HTTPS request has a ten-second inactivity timeout, and the self-signed certificate is accepted only for this loopback request.
 
 **It is written to distinguish "slow" from "never".** Everything reads as starting during a five-minute grace period. Past it, an empty network database means the router never reached a reseed server and will not recover on its own; native router errors (1: clock skew, 2: offline, 5: no descriptors) are surfaced with their number. NAT classifications (3 and 4) are not fatal errors. A router that has reseeded but has no active peers yet reports starting.
 
 **It fails closed.** Failed authentication, a JSON-RPC error, or a reply missing any of the four numeric metrics reports starting rather than success. Tokens are renewed on every check, including after a daemon restart. Upstream 3.0.0 accepts the required `Token` but also logs `I2PControl: RouterInfo unknown request Token` while iterating RouterInfo parameters; this diagnostic is not an authentication failure, and the log filter drops it at `warn`.
+
+**Transport Gateway checks each transport and address family separately.** It fails when a transport's exposed addresses for a family all sit on gateways other than the service's outbound gateway. The router learns each family's address from its outbound traffic, so in that case it cannot use the address the user exposed. NTCP2 exposure cannot satisfy SSU2's check, or vice versa. Extra exposures alongside the outbound gateway pass for the same transport and family. Remapped external ports still count as exposures for this gateway check; a pass does not verify port forwarding or advertised ports. With no public transport address exposed, it reports disabled.
 
 The empty-network-database case is usually not an I2P fault: reseeding resolves hostnames over the container's resolver, so a server whose DNS is not answering breaks I2P alone and looks like an I2P bug. A router that reseeded but stays unintegrated is usually a reachability problem instead — the transport ports not being forwarded is the common cause, and it also shows in the router console as a firewalled status.
 
@@ -243,4 +250,5 @@ actions:
 tasks: []
 health_checks:
   - i2pd # displayed "I2P Network"; I2PControl RouterInfo, 5-min grace period
+  - transport-gateway # displayed "Transport Gateway"; exposed transport gateways vs. outbound gateway
 ```

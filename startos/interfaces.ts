@@ -1,6 +1,13 @@
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { samHostId, samPort, socksHostId, socksPort } from './utils'
+import {
+  ntcp2Port,
+  samHostId,
+  samPort,
+  socksHostId,
+  socksPort,
+  ssu2Port,
+} from './utils'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   // I2P exposes SOCKS proxy on port 4447 (i2p network only)
@@ -85,9 +92,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   // external port mapping i2pd shows "Firewalled - Symmetric NAT" and
   // inbound tunnel delivery fails, which breaks server tunnels.
   const ssu2Multi = sdk.MultiHost.of(effects, 'ssu2-multi')
-  const ssu2Origin = await ssu2Multi.bindPort(4450, {
+  const ssu2Origin = await ssu2Multi.bindPort(ssu2Port, {
     protocol: null,
-    preferredExternalPort: 4450,
+    preferredExternalPort: ssu2Port,
     addSsl: null,
     secure: { ssl: false },
   })
@@ -105,9 +112,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const ssu2Receipt = await ssu2Origin.export([ssu2Interface])
 
   const ntcp2Multi = sdk.MultiHost.of(effects, 'ntcp2-multi')
-  const ntcp2Origin = await ntcp2Multi.bindPort(4451, {
+  const ntcp2Origin = await ntcp2Multi.bindPort(ntcp2Port, {
     protocol: null,
-    preferredExternalPort: 4451,
+    preferredExternalPort: ntcp2Port,
     addSsl: null,
     secure: { ssl: false },
   })

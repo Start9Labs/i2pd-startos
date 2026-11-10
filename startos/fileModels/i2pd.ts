@@ -4,8 +4,10 @@ import {
   I2PCONTROL_PASSWORD,
   consolePort,
   i2pControlPort,
+  ntcp2Port,
   samPort,
   socksPort,
+  ssu2Port,
 } from '../utils'
 
 const portInfoShape = z.looseObject({
@@ -87,7 +89,10 @@ export function nextKey(record: Record<string, unknown>): string {
 }
 
 /** Parses through Zod before emitting, so a corrupt value cannot reach i2pd. */
-export function generateI2pdConf(config: I2pdConfig): string {
+export function generateI2pdConf(
+  config: I2pdConfig,
+  publicIpv6: string | null = null,
+): string {
   const router = routerShape.parse(config.router)
   const ff = floodfillShape.parse(config.floodfill)
 
@@ -117,10 +122,9 @@ export function generateI2pdConf(config: I2pdConfig): string {
     lines.push('floodfill = true')
   }
 
-  // The container holds only link-local/ULA IPv6, so an IPv6-only peer never connects.
   lines.push('nat = true')
   lines.push('ipv4 = true')
-  lines.push('ipv6 = false')
+  lines.push('ipv6 = true')
   lines.push('')
 
   lines.push('# Web console (also used for internal health checks)')
@@ -135,12 +139,13 @@ export function generateI2pdConf(config: I2pdConfig): string {
 
   lines.push('[httpproxy]')
   lines.push('enabled = true')
-  lines.push('address = 0.0.0.0')
+  lines.push('address = ::')
   lines.push('port = 4444')
   lines.push('')
 
   lines.push('[socksproxy]')
   lines.push('enabled = true')
+  // i2pd 3.0.0 requires an IPv4 listener for SOCKS UDP association replies.
   lines.push('address = 0.0.0.0')
   lines.push(`port = ${socksPort}`)
   lines.push('')
@@ -148,12 +153,15 @@ export function generateI2pdConf(config: I2pdConfig): string {
   lines.push('[ssu2]')
   lines.push('enabled = true')
   // Unset, i2pd picks a fresh random port per start, which no forward can follow.
-  lines.push('port = 4450')
+  lines.push(`port = ${ssu2Port}`)
   lines.push('')
 
   lines.push('[ntcp2]')
   lines.push('enabled = true')
-  lines.push('port = 4451')
+  lines.push(`port = ${ntcp2Port}`)
+  // Publish-only: `address6` would also bind the sockets to an address the container lacks.
+  // SSU2 address learning can replace this NTCP2 seed.
+  if (publicIpv6) lines.push(`addressv6 = ${publicIpv6}`)
   lines.push('')
 
   // One hop rather than the default two: netDb lookups survive NAT far better.

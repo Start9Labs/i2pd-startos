@@ -1,41 +1,21 @@
-import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
-import { i2pdConfig, tunnelDir } from '../fileModels/i2pd'
-import { sdk } from '../sdk'
-import { generateI2pKey, lacksSigningKey } from '../utils'
+import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '3.0.0:0',
+  version: '3.0.0:1',
   releaseNotes: {
     en_US:
-      "Updated i2pd to 3.0.0 with full SAM 3.3 support, faster destination lookups, more reliable UDP tunnels, and fixes for SAM disconnections after reconnecting. I2P addresses created by earlier versions are replaced with working ones; share the new address shown in each service's Interfaces tab. Router errors are reported accurately. Private files retain their permissions across restarts. Requires StartOS 0.4.1 or later. Full upstream notes: https://github.com/PurpleI2P/i2pd/releases/tag/2.61.0 and https://github.com/PurpleI2P/i2pd/releases/tag/3.0.0",
+      'Requires StartOS 0.4.1 or later. The router now connects to I2P peers over IPv6 as well as IPv4, and the HTTP proxy accepts connections on your server’s IPv6 addresses. A new Transport Gateway health check fails when the router’s outbound traffic leaves through a gateway its ports aren’t exposed on.',
     es_ES:
-      'i2pd actualizado a 3.0.0 con soporte completo de SAM 3.3, búsquedas de destinos más rápidas, túneles UDP más fiables y correcciones de desconexiones de SAM tras reconectar. Las direcciones I2P creadas por versiones anteriores se sustituyen por otras que funcionan; comparta la nueva dirección que aparece en la pestaña Interfaces de cada servicio. Los errores del router se indican correctamente. Los archivos privados conservan sus permisos tras reiniciar. Requiere StartOS 0.4.1 o posterior. Notas completas del proyecto: https://github.com/PurpleI2P/i2pd/releases/tag/2.61.0 y https://github.com/PurpleI2P/i2pd/releases/tag/3.0.0',
+      'Requiere StartOS 0.4.1 o posterior. El router ahora se conecta con pares I2P por IPv6 además de IPv4, y el proxy HTTP acepta conexiones en las direcciones IPv6 de su servidor. Una nueva comprobación de estado, Puerta de enlace de transporte, falla cuando el tráfico saliente del router sale por una puerta de enlace distinta de aquella en la que están expuestos sus puertos.',
     de_DE:
-      'i2pd auf 3.0.0 aktualisiert: vollständige SAM-3.3-Unterstützung, schnellere Zielsuche, zuverlässigere UDP-Tunnel und Behebung von SAM-Verbindungsabbrüchen nach dem Wiederverbinden. Von früheren Versionen erstellte I2P-Adressen werden durch funktionierende ersetzt; teilen Sie die neue Adresse aus dem Reiter Interfaces des jeweiligen Dienstes. Routerfehler werden korrekt gemeldet. Private Dateien behalten ihre Berechtigungen nach Neustarts. Erfordert StartOS 0.4.1 oder neuer. Vollständige Versionshinweise: https://github.com/PurpleI2P/i2pd/releases/tag/2.61.0 und https://github.com/PurpleI2P/i2pd/releases/tag/3.0.0',
+      'Erfordert StartOS 0.4.1 oder neuer. Der Router verbindet sich jetzt über IPv6 sowie IPv4 mit I2P-Peers, und der HTTP-Proxy nimmt Verbindungen über die IPv6-Adressen Ihres Servers an. Eine neue Zustandsprüfung „Transport-Gateway“ schlägt fehl, wenn der ausgehende Datenverkehr des Routers über ein anderes Gateway läuft als das, auf dem seine Ports freigegeben sind.',
     pl_PL:
-      'Zaktualizowano i2pd do 3.0.0: pełna obsługa SAM 3.3, szybsze wyszukiwanie celów, bardziej niezawodne tunele UDP i poprawki rozłączeń SAM po ponownym połączeniu. Adresy I2P utworzone przez wcześniejsze wersje zostają zastąpione działającymi; udostępnij nowy adres widoczny na karcie Interfaces każdej usługi. Błędy routera są poprawnie zgłaszane. Pliki prywatne zachowują uprawnienia po ponownym uruchomieniu. Wymaga StartOS 0.4.1 lub nowszego. Pełne informacje o wydaniach: https://github.com/PurpleI2P/i2pd/releases/tag/2.61.0 oraz https://github.com/PurpleI2P/i2pd/releases/tag/3.0.0',
+      'Wymaga StartOS 0.4.1 lub nowszego. Router łączy się teraz z peerami I2P przez IPv6 oraz IPv4, a proxy HTTP przyjmuje połączenia na adresach IPv6 twojego serwera. Nowa kontrola stanu „Brama transportu” zgłasza błąd, gdy ruch wychodzący routera opuszcza serwer przez inną bramę niż ta, na której udostępniono jego porty.',
     fr_FR:
-      "i2pd mis à jour vers 3.0.0 : prise en charge complète de SAM 3.3, recherches de destinations plus rapides, tunnels UDP plus fiables et correction des déconnexions SAM après reconnexion. Les adresses I2P créées par les versions précédentes sont remplacées par des adresses fonctionnelles ; partagez la nouvelle adresse affichée dans l'onglet Interfaces de chaque service. Les erreurs du routeur sont correctement signalées. Les fichiers privés conservent leurs permissions après redémarrage. Nécessite StartOS 0.4.1 ou ultérieur. Notes de version complètes : https://github.com/PurpleI2P/i2pd/releases/tag/2.61.0 et https://github.com/PurpleI2P/i2pd/releases/tag/3.0.0",
+      'Nécessite StartOS 0.4.1 ou ultérieur. Le routeur se connecte désormais aux pairs I2P en IPv6 comme en IPv4, et le proxy HTTP accepte les connexions sur les adresses IPv6 de votre serveur. Une nouvelle vérification d’état, Passerelle de transport, échoue lorsque le trafic sortant du routeur passe par une autre passerelle que celle sur laquelle ses ports sont exposés.',
   },
   migrations: {
-    up: async ({ effects }) => {
-      const config = await i2pdConfig.read().once()
-      for (const [packageId, hosts] of Object.entries(
-        config?.i2pServices ?? {},
-      ))
-        for (const [hostId, services] of Object.entries(hosts ?? {}))
-          for (const index of Object.keys(services ?? {})) {
-            const dir = tunnelDir(packageId, hostId, index)
-            const keyPath = `${dir}/${packageId}-${hostId}-${index}.dat`
-            const keyfile = await sdk.volumes.i2pd
-              .readFile(keyPath)
-              .catch(() => null)
-            if (!Buffer.isBuffer(keyfile) || !lacksSigningKey(keyfile)) continue
-            const fresh = generateI2pKey()
-            await sdk.volumes.i2pd.writeFile(keyPath, fresh.keyfile)
-            await sdk.volumes.i2pd.writeFile(`${dir}/hostname`, fresh.hostname)
-          }
-    },
+    up: async () => {},
     down: IMPOSSIBLE,
   },
 })

@@ -9,7 +9,14 @@ import {
   generateTunnelsConf,
 } from './fileModels/i2pd'
 import { CHURN_FAMILY_COUNT, i2pdLogFilter } from './i2pdLogFilter'
-import { I2PCONTROL_PASSWORD, i2pControlPort } from './utils'
+import {
+  I2PCONTROL_PASSWORD,
+  i2pControlPort,
+  ntcp2Port,
+  ntcp2PublicIpv6,
+  ssu2Port,
+  transportPublicGateways,
+} from './utils'
 
 /** Accepts the self-signed certificate on loopback only. */
 const i2pControlRpc = (method: string, params: Record<string, unknown>) =>
@@ -152,7 +159,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (config) {
     await sdk.volumes.i2pd.writeFile(
       'etc/i2pd/i2pd.conf',
-      generateI2pdConf(config),
+      generateI2pdConf(config, await ntcp2PublicIpv6(effects).const()),
     )
     await sdk.volumes.i2pd.writeFile(
       'etc/i2pd/tunnels.conf',
@@ -219,5 +226,81 @@ export const main = sdk.setupMain(async ({ effects }) => {
         fn: checkRouter,
       },
       requires: ['fix-perms'],
+    })
+    .addHealthCheck('transport-gateway', {
+      ready: {
+        display: i18n('Transport Gateway'),
+        fn: async () => {
+          const outbound = await sdk.getOutboundGateway(effects).once()
+          const exposed = [
+            ...(
+              await transportPublicGateways(
+                effects,
+                'ntcp2-multi',
+                ntcp2Port,
+                'ntcp2',
+              ).once()
+            ).map((exposure) => ({ ...exposure, transport: 'NTCP2' })),
+            ...(
+              await transportPublicGateways(
+                effects,
+                'ssu2-multi',
+                ssu2Port,
+                'ssu2',
+              ).once()
+            ).map((exposure) => ({ ...exposure, transport: 'SSU2' })),
+          ]
+          if (!exposed.length)
+            return {
+              result: 'disabled',
+              message: i18n('No public transport address is exposed'),
+            }
+          // One transport's exposure cannot satisfy the other's gateway requirement.
+          const stranded = [
+            ...new Set(exposed.map((e) => e.transport)),
+          ].flatMap((transport) =>
+            (['ipv4', 'ipv6'] as const).flatMap((family) => {
+              const gateways = [
+                ...new Set(
+                  exposed
+                    .filter(
+                      (e) => e.transport === transport && e.family === family,
+                    )
+                    .map((e) => e.gateway),
+                ),
+              ]
+              return gateways.length && !gateways.includes(outbound)
+                ? [{ transport, family, gateways }]
+                : []
+            }),
+          )
+          if (stranded.length)
+            return {
+              result: 'failure',
+              message: i18n(
+                'The I2P transports are exposed over ${family} on ${exposed}, but this service’s outbound traffic leaves through ${outbound}. The router learns its address from outbound traffic, so it cannot use the exposed address. Set this service’s outbound gateway to ${exposed}, or expose the transports on ${outbound}.',
+                {
+                  family: stranded
+                    .map(
+                      (s) =>
+                        `${s.transport} ${s.family === 'ipv4' ? 'IPv4' : 'IPv6'}`,
+                    )
+                    .join(', '),
+                  exposed: [
+                    ...new Set(stranded.flatMap((s) => s.gateways)),
+                  ].join(', '),
+                  outbound,
+                },
+              ),
+            }
+          return {
+            result: 'success',
+            message: i18n('Exposed on the outbound gateway (${gateway})', {
+              gateway: outbound,
+            }),
+          }
+        },
+      },
+      requires: ['i2pd'],
     })
 })

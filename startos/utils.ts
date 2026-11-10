@@ -40,6 +40,44 @@ export const consolePort = 7070
 export const i2pControlPort = 7650
 export const I2PCONTROL_PASSWORD = 'itoopie'
 
+export const ntcp2Port = 4451
+export const ssu2Port = 4450
+
+export const transportPublicGateways = (
+  effects: T.Effects,
+  hostId: string,
+  port: number,
+  interfaceId: string,
+) =>
+  sdk.host.getOwn(effects, hostId, (host) =>
+    (
+      Object.values(host?.bindings[port]?.interfaces ?? {})
+        .find((i) => i.id === interfaceId)
+        ?.addressInfo.public.filter({ exclude: { kind: 'domain' } })
+        .format('hostname-info') ?? []
+    ).flatMap((h) =>
+      h.metadata.kind === 'ipv4' || h.metadata.kind === 'ipv6'
+        ? [{ family: h.metadata.kind, gateway: h.metadata.gateway }]
+        : [],
+    ),
+  )
+
+/** The NTCP2 IPv6 configuration seed; null unless one public address uses its port. */
+export const ntcp2PublicIpv6 = (effects: T.Effects) =>
+  sdk.host.getOwn(effects, 'ntcp2-multi', (host) => {
+    const ipv6 = new Set(
+      (
+        Object.values(host?.bindings[ntcp2Port]?.interfaces ?? {})
+          .find((i) => i.id === 'ntcp2')
+          ?.addressInfo.public.filter({ kind: 'ipv6' })
+          .format('hostname-info') ?? []
+      )
+        .filter((h) => h.port === ntcp2Port)
+        .map((h) => h.hostname),
+    )
+    return ipv6.size === 1 ? [...ipv6][0] : null
+  })
+
 /**
  * The IPv4 LXC-bridge `{ hostname, port }` for the interface on a binding of an
  * already-resolved host. `<pkg>.startos` DNS and container IPs are deprecated;
