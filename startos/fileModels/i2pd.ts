@@ -7,6 +7,7 @@ import {
   ntcp2Port,
   samPort,
   socksPort,
+  ssu2Port,
 } from '../utils'
 
 const portInfoShape = z.looseObject({
@@ -152,7 +153,7 @@ export function generateI2pdConf(
   lines.push('[ssu2]')
   lines.push('enabled = true')
   // Unset, i2pd picks a fresh random port per start, which no forward can follow.
-  lines.push('port = 4450')
+  lines.push(`port = ${ssu2Port}`)
   lines.push('')
 
   lines.push('[ntcp2]')

@@ -176,17 +176,20 @@ None. This package raises no tasks, so the service is never held on a prompt and
 
 ## Health Checks
 
-One check, on the router.
+Two checks: the router's integration, and whether its exposed transport addresses are usable.
 
-| Check  | Displayed as  | Method                                     |
-| ------ | ------------- | ------------------------------------------ |
-| `i2pd` | "I2P Network" | i2pd's I2PControl `RouterInfo` on loopback |
+| Check               | Displayed as        | Method                                                                       |
+| ------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `i2pd`              | "I2P Network"       | i2pd's I2PControl `RouterInfo` on loopback                                   |
+| `transport-gateway` | "Transport Gateway" | the gateways of the public NTCP2/SSU2 addresses against `getOutboundGateway` |
 
 It authenticates on each check, then asks the router for `net.status`, `net.error`, `netdb.knownpeers` and `netdb.activepeers`. It reports integration with the network rather than a bound port — which is what makes the first several minutes read as starting rather than failing. Each HTTPS request has a ten-second inactivity timeout, and the self-signed certificate is accepted only for this loopback request.
 
 **It is written to distinguish "slow" from "never".** Everything reads as starting during a five-minute grace period. Past it, an empty network database means the router never reached a reseed server and will not recover on its own; native router errors (1: clock skew, 2: offline, 5: no descriptors) are surfaced with their number. NAT classifications (3 and 4) are not fatal errors. A router that has reseeded but has no active peers yet reports starting.
 
 **It fails closed.** Failed authentication, a JSON-RPC error, or a reply missing any of the four numeric metrics reports starting rather than success. Tokens are renewed on every check, including after a daemon restart. Upstream 3.0.0 accepts the required `Token` but also logs `I2PControl: RouterInfo unknown request Token` while iterating RouterInfo parameters; this diagnostic is not an authentication failure, and the log filter drops it at `warn`.
+
+**Transport Gateway fails only when a family's exposed addresses all sit on gateways other than the service's outbound gateway.** The router learns each family's address from its outbound traffic, so in that case it cannot use the address the user exposed and stays firewalled. Exposures on extra gateways alongside the outbound one cost nothing and pass. With no public transport address exposed, it reports disabled.
 
 The empty-network-database case is usually not an I2P fault: reseeding resolves hostnames over the container's resolver, so a server whose DNS is not answering breaks I2P alone and looks like an I2P bug. A router that reseeded but stays unintegrated is usually a reachability problem instead — the transport ports not being forwarded is the common cause, and it also shows in the router console as a firewalled status.
 
@@ -247,4 +250,5 @@ actions:
 tasks: []
 health_checks:
   - i2pd # displayed "I2P Network"; I2PControl RouterInfo, 5-min grace period
+  - transport-gateway # displayed "Transport Gateway"; exposed transport gateways vs. outbound gateway
 ```

@@ -65,4 +65,4 @@ For significantly better performance and to be classified as a directly-reachabl
 
 Saving restarts the router. Give it 5–10 minutes to settle; the router console should move from "Firewalled" to "OK".
 
-If you publish the router's ports through StartTunnel to keep your home IP private, send I2Pd's outbound traffic through that tunnel too. Connections the router opens itself to other I2P routers otherwise leave through your home router, so those routers see your home IP. If you use the tunnel for another reason, such as a port your router can't forward, there is nothing to change.
+Send I2Pd's outbound traffic through the same gateway you publish its ports on. The router learns its address from the connections it opens to other routers, so if they leave through a different gateway it advertises an address nobody can reach it at and stays firewalled. Through StartTunnel, those routers would also see your home IP. The **Transport Gateway** health check fails when the two don't match, and names the gateway to choose.
