@@ -55,13 +55,11 @@ export const transportPublicGateways = (
         .find((i) => i.id === interfaceId)
         ?.addressInfo.public.filter({ exclude: { kind: 'domain' } })
         .format('hostname-info') ?? []
-    )
-      .filter((h) => h.port === port)
-      .flatMap((h) =>
-        h.metadata.kind === 'ipv4' || h.metadata.kind === 'ipv6'
-          ? [{ family: h.metadata.kind, gateway: h.metadata.gateway }]
-          : [],
-      ),
+    ).flatMap((h) =>
+      h.metadata.kind === 'ipv4' || h.metadata.kind === 'ipv6'
+        ? [{ family: h.metadata.kind, gateway: h.metadata.gateway }]
+        : [],
+    ),
   )
 
 /** The NTCP2 IPv6 configuration seed; null unless one public address uses its port. */
