@@ -19,6 +19,8 @@ To browse the invisible web, configure your web browser's proxy settings to use 
 - **HTTP proxy:** port 4444
 - **SOCKS5 proxy:** port 4447
 
+The HTTP proxy accepts IPv4 and IPv6 connections. Use an IPv4 address for the SOCKS5 proxy.
+
 Please note that these proxies only work for routing traffic to internal .i2p and .b32.i2p addresses. They are not general-purpose privacy proxies for accessing the regular internet (clearnet).
 
 ## Hosting Services on I2P

@@ -42,7 +42,7 @@ export const I2PCONTROL_PASSWORD = 'itoopie'
 
 export const ntcp2Port = 4451
 
-/** The NTCP2 binding's public IPv6, or null unless exactly one is exposed on the port i2pd publishes. */
+/** The NTCP2 IPv6 configuration seed; null unless one public address uses its port. */
 export const ntcp2PublicIpv6 = (effects: T.Effects) =>
   sdk.host.getOwn(effects, 'ntcp2-multi', (host) => {
     const ipv6 = new Set(

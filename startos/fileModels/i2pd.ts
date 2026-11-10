@@ -144,7 +144,8 @@ export function generateI2pdConf(
 
   lines.push('[socksproxy]')
   lines.push('enabled = true')
-  lines.push('address = ::')
+  // i2pd 3.0.0 requires an IPv4 listener for SOCKS UDP association replies.
+  lines.push('address = 0.0.0.0')
   lines.push(`port = ${socksPort}`)
   lines.push('')
 
@@ -158,6 +159,7 @@ export function generateI2pdConf(
   lines.push('enabled = true')
   lines.push(`port = ${ntcp2Port}`)
   // Publish-only: `address6` would also bind the sockets to an address the container lacks.
+  // SSU2 address learning can replace this NTCP2 seed.
   if (publicIpv6) lines.push(`addressv6 = ${publicIpv6}`)
   lines.push('')
 

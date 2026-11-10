@@ -107,6 +107,8 @@ Five interfaces, plus one port deliberately bound **without** one.
 | I2P SSU2 Transport  | `ssu2`    | p2p  | 4450 | Peer-to-peer transport (UDP)       |
 | I2P NTCP2 Transport | `ntcp2`   | p2p  | 4451 | Peer-to-peer transport (TCP)       |
 
+The HTTP proxy listens on IPv4 and IPv6. SOCKS remains IPv4-only: i2pd 3.0.0 requires an IPv4 listener to reply to SOCKS UDP association requests.
+
 **The proxies are not general-purpose privacy proxies.** They reach `.i2p` addresses only — unlike Tor's SOCKS proxy, pointing a browser at them does not anonymize ordinary web traffic.
 
 **SAM is bound on 7656 with no interface exported**, and that is a security decision: SAM is unauthenticated and lets a caller create server destinations, not merely proxy outbound, so it is reachable by other services over the internal bridge and from nowhere else — never on the LAN, clearnet, or Tor.
@@ -115,7 +117,7 @@ Five interfaces, plus one port deliberately bound **without** one.
 
 **The two transport ports are exported so they can be forwarded.** Without a consistent external port mapping the router reports itself firewalled behind a symmetric NAT, and inbound tunnel delivery fails — which breaks every server tunnel this package issues. They are interfaces so the user can allow that forwarding.
 
-**The transports run over IPv6 as well as IPv4.** When exactly one public IPv6 address is exposed on NTCP2's port, the router publishes it as its NTCP2 IPv6 address, and the router restarts when that changes; otherwise it publishes none. SSU2 learns its IPv6 address from peers. The package never hands i2pd the container's own ULA.
+**The transports run over IPv6 as well as IPv4.** When exactly one public IPv6 address is exposed on NTCP2's port, the package seeds `ntcp2.addressv6` with it, and the router restarts when that seed changes; otherwise the option is omitted. SSU2 address discovery updates both transports and can replace the seed with the server's egress IPv6 address, even when no NTCP2 IPv6 address is enabled in Interfaces. An advertised address therefore does not establish that NTCP2 is reachable there. The package never hands i2pd the container's own ULA.
 
 ## Installation and First-Run Flow
 
