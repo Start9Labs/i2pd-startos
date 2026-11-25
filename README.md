@@ -87,7 +87,7 @@ One model, and two generated files that are not models.
 
 The model holds the router settings and a **nested map of tunnels**, keyed by package, then host, then index. That map is the package's record of every address it has issued.
 
-Router settings cover the bandwidth class, whether to relay transit traffic (and if so its bandwidth share and tunnel ceiling), whether to run as a floodfill router, the log level, and optional overrides for the external address and reseed source. A `resetPending` flag also lives here, set by Reset Router and consumed at the next start.
+Router settings cover the bandwidth class, whether to relay transit traffic (and if so its bandwidth share and tunnel ceiling), whether to run as a floodfill router, the log level, whether the HTTP proxy's address helper is on, and optional overrides for the external address and reseed source. The router console's password lives here too, unset until Set Console Password runs. A `resetPending` flag also lives here, set by Reset Router and consumed at the next start.
 
 ## Dependencies
 
@@ -109,6 +109,10 @@ Five interfaces, plus one port deliberately bound **without** one.
 
 The HTTP proxy listens on IPv4 and IPv6. SOCKS remains IPv4-only: i2pd 3.0.0 requires an IPv4 listener to reply to SOCKS UDP association requests.
 
+**The HTTP proxy's address helper is off by default** (`addresshelper = false`). With it on, a link carrying an `i2paddresshelper=` parameter — what jump services hand out — can add or change an entry in the router's address book. Configure Router turns it on.
+
+**The router console asks for a login at the StartOS proxy** (HTTP Basic, user `admin`, realm `I2Pd`). Until Set Console Password has run, the credential list is empty and every request through an interface address is refused. i2pd's own console auth stays off: `reloadI2pdTunnels` drives the console on `127.0.0.1` inside the container, which the proxy never sees.
+
 **The proxies are not general-purpose privacy proxies.** They reach `.i2p` addresses only — unlike Tor's SOCKS proxy, pointing a browser at them does not anonymize ordinary web traffic.
 
 **SAM is bound on 7656 with no interface exported**, and that is a security decision: SAM is unauthenticated and lets a caller create server destinations, not merely proxy outbound, so it is reachable by other services over the internal bridge and from nowhere else — never on the LAN, clearnet, or Tor.
@@ -129,7 +133,7 @@ Addresses for other services are not created here — they are requested from th
 
 ## Actions
 
-Four actions, and two of them are hidden.
+Five actions, and two of them are hidden.
 
 ### Configure Router
 
@@ -142,6 +146,15 @@ The router's own settings: bandwidth class, transit traffic, floodfill, log leve
 - **Transit is off by default**, so the router carries only the traffic of services on this server. Enabling it makes the node relay for other I2P users — good for the network, and a meaningful increase in bandwidth and connections — bounded by the share and the transit-tunnel ceiling that appear with it. Floodfill is the other setting that carries other people's traffic.
 - **The bandwidth class costs nothing while transit is off.** Every limit i2pd offers — the class, the share, the tunnel ceiling — caps relayed traffic alone and never this router's own, which is why `notransit` rather than a low class is what takes relaying to zero, and why the class can stay high enough for LeaseSet publication to land.
 - **The external address override is for hosts the router cannot detect correctly**, and setting it wrongly is a good way to become unreachable.
+- **Address Helper is off by default.** Turn it on only to use jump-service links, which add or change address-book entries through the HTTP proxy.
+
+### Set Console Password
+
+Generates a random password for the router console and returns it with the username (`admin`).
+
+- **What it changes:** the password in the model, and through it the credential the StartOS proxy accepts on the console interface.
+- **Cost:** none; the router keeps running.
+- **Repeat safety:** each run replaces the password, so the old one stops working. Once one is set, the action asks for confirmation first.
 
 ### Reset Router
 
@@ -172,7 +185,13 @@ The counterpart, also invoked through the plugin.
 
 ## Tasks
 
-None. This package raises no tasks, so the service is never held on a prompt and its ordinary controls are always available.
+One, and it never holds the service.
+
+| Task                 | Severity  | Raised when                   | Points to            |
+| -------------------- | --------- | ----------------------------- | -------------------- |
+| Set console password | important | no console password is stored | Set Console Password |
+
+The router runs while it is open; only the console stays locked.
 
 ## Health Checks
 
@@ -216,6 +235,8 @@ A restored instance comes back with the same router identity and the same addres
 7. **The tunnel actions are hidden**, because they belong to the plugin flow on other services' pages.
 8. **Transit relaying is off by default.** This router carries only the traffic of services on this server until Configure Router turns transit on.
 9. **The router's log is filtered at `warn`**, dropping known-benign network weather. Selecting `info` or `debug` disables the filter along with raising the level.
+10. **The HTTP proxy's address helper is off by default**, so jump-service links do nothing until Configure Router turns it on.
+11. **The router console requires a login**, unavailable until Set Console Password has run. Other services on this server can still reach it over the internal bridge without one.
 
 ---
 
@@ -239,15 +260,17 @@ dependencies: []
 interfaces:
   http: { type: api, port: 4444 } # .i2p addresses only
   socks: { type: api, port: 4447 } # .i2p addresses only
-  console: { type: ui, port: 7070 }
+  console: { type: ui, port: 7070 } # proxy basic auth, user admin
   ssu2: { type: p2p, port: 4450 } # forward for inbound tunnels
   ntcp2: { type: p2p, port: 4451 } # forward for inbound tunnels
 actions:
   - configure-router
+  - set-console-password # generates and returns the console login
   - reset-router # only-running; queues a netDb wipe applied at next start
   - add-i2p-tunnel # hidden; invoked via the URL plugin
   - delete-i2p-tunnel # hidden; invoked via the URL plugin
-tasks: []
+tasks:
+  - set-console-password # important; while no console password is stored
 health_checks:
   - i2pd # displayed "I2P Network"; I2PControl RouterInfo, 5-min grace period
   - transport-gateway # displayed "Transport Gateway"; exposed transport gateways vs. outbound gateway

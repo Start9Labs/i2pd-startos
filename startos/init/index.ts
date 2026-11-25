@@ -6,11 +6,13 @@ import { actions } from '../actions'
 import { restoreInit } from '../backups'
 import { registerUrlPlugin, exportUrls } from '../plugin/url'
 import { seedI2pdConfig } from './seedI2pdConfig'
+import { tasks } from './tasks'
 
 export const init = sdk.setupInit(
   restoreInit,
   versionGraph,
   seedI2pdConfig,
+  tasks,
   setInterfaces,
   actions,
   dependencies,

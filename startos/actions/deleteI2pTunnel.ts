@@ -95,6 +95,7 @@ export const deleteI2pTunnel = sdk.Action.withInput(
     }
 
     const updatedConfig = {
+      ...config,
       i2pServices,
       floodfill: config?.floodfill ?? { enabled: false },
       router: config?.router ?? defaultRouter,

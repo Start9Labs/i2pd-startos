@@ -35,6 +35,7 @@ export const socksPort = 4447
 
 /** The web console, which is also what `reloadI2pdTunnels` drives. */
 export const consolePort = 7070
+export const consoleUsername = 'admin'
 
 /** I2PControl, the health check's data source. Loopback-only, never bound. */
 export const i2pControlPort = 7650

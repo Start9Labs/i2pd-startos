@@ -275,6 +275,7 @@ export const addI2pTunnel = sdk.Action.withInput(
     // Build and write the full config in one pass, avoids a second read() call
     // after write() which can race and throw "Unexpected end of JSON input".
     const updatedConfig = {
+      ...config,
       i2pServices,
       floodfill: config?.floodfill ?? { enabled: false },
       router: config?.router ?? defaultRouter,
