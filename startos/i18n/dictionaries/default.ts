@@ -82,6 +82,17 @@ const dict = {
   'No public transport address is exposed': 102,
   'The I2P transports are exposed over ${family} on ${exposed}, but this service’s outbound traffic leaves through ${outbound}. The router learns its address from outbound traffic, so it cannot use the exposed address. Set this service’s outbound gateway to ${exposed}, or expose the transports on ${outbound}.': 103,
   'Exposed on the outbound gateway (${gateway})': 104,
+  'Address Helper': 105,
+  "Let links opened through the HTTP proxy add or change entries in the router's address book, as jump services do. Leave it off unless you use jump links.": 106,
+  'Set Console Password': 107,
+  'Reset Console Password': 108,
+  'Generate a new random password for signing in to the I2P Router Console.': 109,
+  'Replaces the current console password. The old password stops working.': 110,
+  'Console Credentials': 111,
+  'Use these credentials to sign in to the I2P Router Console.': 112,
+  Username: 113,
+  Password: 114,
+  'Set a password to sign in to the I2P Router Console': 115,
 } as const
 
 export type I18nKey = keyof typeof dict

@@ -43,6 +43,7 @@ export const routerShape = z.looseObject({
     .optional()
     .catch(undefined),
   reseedUrl: z.string().url().optional().catch(undefined),
+  addressHelper: z.boolean().catch(false),
 })
 
 const shape = z.looseObject({
@@ -59,7 +60,10 @@ const shape = z.looseObject({
     bandwidth: 'O',
     transit: { enabled: false, share: 50, maxTunnels: 2500 },
     loglevel: 'warn',
+    addressHelper: false,
   }),
+  // Unset leaves the router console rejecting every login.
+  consolePassword: z.string().min(1).optional().catch(undefined),
   // Applied by main before any daemon exists: a running router would rewrite
   // netDb and peerProfiles straight back out of memory.
   resetPending: z.boolean().catch(false),
@@ -70,6 +74,7 @@ export const defaultRouter: z.infer<typeof routerShape> = {
   bandwidth: 'O',
   transit: { enabled: false, share: 50, maxTunnels: 2500 },
   loglevel: 'warn',
+  addressHelper: false,
 }
 
 export type I2pdConfig = z.infer<typeof shape>
@@ -141,6 +146,7 @@ export function generateI2pdConf(
   lines.push('enabled = true')
   lines.push('address = ::')
   lines.push('port = 4444')
+  lines.push(`addresshelper = ${router.addressHelper}`)
   lines.push('')
 
   lines.push('[socksproxy]')

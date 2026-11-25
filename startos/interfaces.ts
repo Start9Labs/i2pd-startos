@@ -1,6 +1,9 @@
+import { i2pdConfig } from './fileModels/i2pd'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
+  consolePort,
+  consoleUsername,
   ntcp2Port,
   samHostId,
   samPort,
@@ -68,9 +71,22 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   })
 
   const consoleMulti = sdk.MultiHost.of(effects, 'console-multi')
-  const consoleOrigin = await consoleMulti.bindPort(7070, {
+  const consolePassword = await i2pdConfig
+    .read((c) => c.consolePassword)
+    .const(effects)
+  // An empty credential list rejects every request until a password is set.
+  const consoleOrigin = await consoleMulti.bindPort(consolePort, {
     protocol: 'http',
-    preferredExternalPort: 7070,
+    preferredExternalPort: consolePort,
+    proxy: {
+      auth: {
+        type: 'basic',
+        credentials: consolePassword
+          ? [{ username: consoleUsername, password: consolePassword }]
+          : [],
+        realm: 'I2Pd',
+      },
+    },
   })
 
   const consoleInterface = sdk.createInterface(effects, {

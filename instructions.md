@@ -23,6 +23,8 @@ The HTTP proxy accepts IPv4 and IPv6 connections. Use an IPv4 address for the SO
 
 Please note that these proxies only work for routing traffic to internal .i2p and .b32.i2p addresses. They are not general-purpose privacy proxies for accessing the regular internet (clearnet).
 
+Jump-service links, which add an I2P name to the router's address book as you open them, work only with **Address Helper** turned on in the **Configure Router** action. It is off by default; with it on, such a link can also change an existing entry.
+
 ## Hosting Services on I2P
 
 To give any installed application a `.b32.i2p` address, open that service, go to its **Interfaces** tab, and find the **I2Pd** section under the interface you want to publish. Click **Add I2P Tunnel** there. You can paste the base64-encoded contents of an existing i2pd `.dat` key file to reuse an address you already own, or leave it blank to generate a fresh one.
@@ -48,6 +50,8 @@ If it happens repeatedly, the cause is usually that this server cannot resolve D
 ## Router Console
 
 Open the **I2P Router Console** from this service's Interfaces section to monitor the router: network status (OK / Firewalled), tunnel creation success rate, known routers, and active tunnels.
+
+The console asks you to sign in. Run the **Set Console Password** action to get the username and password; running it again replaces the password.
 
 ## NAT and Reachability
 

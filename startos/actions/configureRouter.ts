@@ -110,6 +110,13 @@ const inputSpec = InputSpec.of({
     maxLength: 2048,
     placeholder: i18n('e.g. https://your-vps.example.com/i2pseeds.su3'),
   }),
+  addressHelper: Value.toggle({
+    name: i18n('Address Helper'),
+    description: i18n(
+      "Let links opened through the HTTP proxy add or change entries in the router's address book, as jump services do. Leave it off unless you use jump links.",
+    ),
+    default: false,
+  }),
 })
 
 export const configureRouter = sdk.Action.withInput(
@@ -143,6 +150,7 @@ export const configureRouter = sdk.Action.withInput(
       loglevel: config?.router?.loglevel ?? 'warn',
       externalHost: config?.router?.externalHost ?? null,
       reseedUrl: config?.router?.reseedUrl ?? null,
+      addressHelper: config?.router?.addressHelper ?? false,
     }
   },
 
@@ -162,6 +170,7 @@ export const configureRouter = sdk.Action.withInput(
     const config = await i2pdConfig.read().once()
 
     const updatedConfig = {
+      ...config,
       i2pServices: config?.i2pServices ?? {},
       floodfill: { enabled: input.floodfill },
       router: {
@@ -173,6 +182,7 @@ export const configureRouter = sdk.Action.withInput(
         loglevel: input.loglevel,
         externalHost: input.externalHost ?? undefined,
         reseedUrl: input.reseedUrl ?? undefined,
+        addressHelper: input.addressHelper,
       },
       resetPending: config?.resetPending ?? false,
     }
